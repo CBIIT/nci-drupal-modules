@@ -1,0 +1,11 @@
+name = Custom submit messages
+description = Allows users to change the message that is displayed when a node is submitted.
+core = 7.x
+dependencies[] = token
+dependencies[] = messages_alter
+; Information added by Drupal.org packaging script on 2014-05-18
+version = "7.x-1.0-beta5"
+core = "7.x"
+project = "csm"
+datestamp = "1400434428"
+
