@@ -1,0 +1,4 @@
+name = Submit Ticket
+description = Customize submit ticket form
+core = 7.x
+package = Custom

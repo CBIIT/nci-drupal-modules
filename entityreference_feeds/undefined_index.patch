@@ -1,0 +1,19 @@
+diff --git a/sites/all/modules/entityreference_feeds/entityreference_feeds.module b/sites/all/modules/entityreference_feeds/entityreference_feeds.module
+index 1e9f59f..e7cd3e6 100644
+--- a/sites/all/modules/entityreference_feeds/entityreference_feeds.module
++++ b/sites/all/modules/entityreference_feeds/entityreference_feeds.module
+@@ -121,9 +121,11 @@ function entityreference_feeds_feeds_processor_targets_alter(&$targets, $entity_
+     $info = field_info_field($field_name);
+     if ($info['type'] == 'entityreference') {
+       $target_type = $info['settings']['target_type'];
+-      $target_bundles = $info['settings']['handler_settings']['target_bundles'];
+-      foreach ($target_bundles as $target_bundle) {
+-        $targets += _entityreference_feeds_get_targets($field_name, $target_type, $target_bundle);
++      if (isset($info['settings']['handler_settings']['target_bundles'])) {
++        $target_bundles = $info['settings']['handler_settings']['target_bundles'];
++        foreach ($target_bundles as $target_bundle) {
++          $targets += _entityreference_feeds_get_targets($field_name, $target_type, $target_bundle);
++        }
+       }
+     }
+   }
