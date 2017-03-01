@@ -1,3 +1,8 @@
+.Ds_Store
+*/.Ds_Store
+*/*/.Ds_Store
+*/*/*/.Ds_Store
+
 # Ignore configuration files that may contain sensitive information.
 sites/*/*settings*.php
 
