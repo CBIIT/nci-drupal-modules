@@ -1,0 +1,199 @@
+<?php
+/**
+ * @file
+ * Implements chosen_ajax functionality.
+ */
+
+/**
+ * Implements hook_form_FORM_ID_alter().
+ */
+function chosen_ajax_form_field_ui_field_edit_form_alter(&$form, $form_state) {
+  if (isset($form['instance']['widget']['type']['#value'])) {
+    $type = $form['instance']['widget']['type']['#value'];
+    if (strstr($type, 'autocomplete')) {
+      $field = $form['#field'];
+      $instance = field_info_instance($form['instance']['entity_type']['#value'], $form['instance']['field_name']['#value'], $form['instance']['bundle']['#value']);
+      $form['instance'] += chosen_ajax_field_widget_settings_form($field, $instance);
+    }
+  }
+}
+
+/**
+ * Implements hook_field_widget_info_alter().
+ */
+function chosen_ajax_field_widget_info_alter(&$info) {
+  $settings = chosen_ajax_element_default_settings();
+  $settings += array(
+    'apply_chosen' => 0,
+    'fix_display' => 0,
+    'pattern' => '/(.+) \((\d+)\)/',
+    'replacement' => '${1}',
+  );
+  foreach ($info as $key => $value) {
+    if (isset($info[$key]['settings'])) {
+      $info[$key]['settings'] += $settings;
+    }
+  }
+}
+
+/**
+ * Implements hook_field_widget_settings_form().
+ */
+function chosen_ajax_field_widget_settings_form($field, $instance) {
+  $settings = $instance['widget']['settings'];
+  // Added for compatibility with chosen 7.x-2.0-alpha2.
+  if (function_exists('chosen_field_widget_settings_form')) {
+    $form = chosen_field_widget_settings_form($field, $instance);
+  }
+  else {
+    $form['chosen'] = array(
+      '#type' => 'fieldset',
+      '#title' => t('Chosen'),
+      '#collapsed' => TRUE,
+      '#collapsible' => TRUE,
+      '#parents' => array('instance', 'widget', 'settings'),
+    );
+  }
+  $form['chosen']['placeholder_text'] = array(
+    '#type' => 'textfield',
+    '#title' => t('Placeholder text'),
+    '#default_value' => $settings['placeholder_text'],
+  );
+  $form['chosen']['typing_placeholder'] = array(
+    '#type' => 'textfield',
+    '#title' => t('Typing placeholder'),
+    '#default_value' => $settings['typing_placeholder'],
+  );
+  $form['chosen']['searching_placeholder'] = array(
+    '#type' => 'textfield',
+    '#title' => t('Searching placeholder'),
+    '#default_value' => $settings['searching_placeholder'],
+  );
+  $form['chosen']['fix_display'] = array(
+    '#type' => 'checkbox',
+    '#title' => t('Fix display'),
+    '#default_value' => $settings['fix_display'],
+  );
+  $form['chosen']['advanced'] = array(
+    '#type' => 'fieldset',
+    '#collapsible' => TRUE,
+    '#collapsed' => TRUE,
+    '#title' => t('Advanced'),
+  );
+  $form['chosen']['advanced']['pattern'] = array(
+    '#type' => 'textfield',
+    '#title' => t('Pattern'),
+    '#default_value' => $settings['pattern'],
+  );
+  $form['chosen']['advanced']['replacement'] = array(
+    '#type' => 'textfield',
+    '#title' => t('Replacement'),
+    '#default_value' => $settings['replacement'],
+  );
+  return $form;
+}
+
+/**
+ * Implements hook_field_widget_form_alter().
+ */
+function chosen_ajax_field_widget_form_alter(&$element, &$form_state, $context) {
+  $settings = $context['instance']['widget']['settings'];
+  chosen_ajax_field_widget_apply_recursive($element, $settings);
+}
+
+/**
+ * Helper function to update element recursively.
+ */
+function chosen_ajax_field_widget_apply_recursive(&$element, $settings) {
+  if (!empty($element['#chosen'])) {
+    if (isset($element['#type']) && $element['#type'] == 'textfield') {
+      $element['#chosen_ajax'] = array(
+        'options' => array(
+          'placeholder_text' => $settings['placeholder_text'],
+          'typing_placeholder' => $settings['typing_placeholder'],
+          'searching_placeholder' => $settings['searching_placeholder'],
+        ),
+      );
+      if ($settings['fix_display']) {
+        $element['#chosen_ajax'] += array(
+          'value callback' => 'preg_replace',
+          'value arguments' => array($settings['pattern'], $settings['replacement']),
+        );
+      }
+      $element['#attached']['library'][] = array('chosen', 'drupal.chosen');
+    }
+    foreach (element_children($element) as $delta) {
+      $element[$delta]['#chosen'] = $element['#chosen'];
+      chosen_ajax_field_widget_apply_recursive($element[$delta], $settings);
+    }
+  }
+}
+
+/**
+ * Implements hook_theme_registry_alter().
+ */
+function chosen_ajax_theme_registry_alter(&$theme_registry) {
+  $theme_registry['textfield']['function'] = 'chosen_ajax_theme_textfield';
+}
+
+/**
+ * Helper function to return default settings for chosen_ajax element.
+ */
+function chosen_ajax_element_default_settings() {
+  return array(
+    'placeholder_text' => t('Choose an option'),
+    'typing_placeholder' => t('Keep typing...'),
+    'searching_placeholder' => t('Looking for'),
+  );
+}
+
+/**
+ * Override theme_textfield.
+ */
+function chosen_ajax_theme_textfield($variables) {
+  $element = $variables['element'];
+  if (!isset($element['#chosen_ajax'])) {
+    return theme_textfield($variables);
+  }
+
+  element_set_attributes($element, array('id', 'name', 'size'));
+
+  $path = drupal_get_path('module', 'chosen_ajax');
+  drupal_add_library('chosen', 'drupal.chosen');
+  drupal_add_css($path . '/chosen_ajax.css');
+  drupal_add_js($path . '/ajax-chosen.js');
+  drupal_add_js($path . '/chosen_ajax.js');
+
+  $extra = '';
+  if ($element['#autocomplete_path'] && drupal_valid_path($element['#autocomplete_path'])) {
+    $element['#attributes']['class'][] = 'form-chosen-ajax';
+    $attributes = array();
+    $attributes['type'] = 'hidden';
+    $attributes['id'] = $element['#attributes']['id'] . '-chosen-ajax';
+    $attributes['value'] = url($element['#autocomplete_path'], array('absolute' => TRUE));
+    $attributes['disabled'] = 'disabled';
+    $attributes['class'][] = 'chosen-ajax';
+    $extra = '<input' . drupal_attributes($attributes) . ' />';
+    $options = chosen_ajax_element_default_settings();
+    if (!empty($element['#chosen_ajax']['options'])) {
+      foreach ($options as $setting => &$value) {
+        if (!empty($element['#chosen_ajax']['options'][$setting])) {
+          $value = $element['#chosen_ajax']['options'][$setting];
+        }
+      }
+    }
+    drupal_add_js(array('chosen_ajax' => array($attributes['id'] => $options)), 'setting');
+  }
+
+  if (empty($element['#chosen_ajax']['value callback'])) {
+    $display = $element['#value'];
+  }
+  else {
+    array_push($element['#chosen_ajax']['value arguments'], $element['#value']);
+    $display = call_user_func_array($element['#chosen_ajax']['value callback'], $element['#chosen_ajax']['value arguments']);
+  }
+
+  $output = '<select' . drupal_attributes($element['#attributes']) . '>' . form_select_options($element, array($element['#value'] => $display)) . '</select>';
+
+  return $output . $extra;
+}

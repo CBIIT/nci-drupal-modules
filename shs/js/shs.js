@@ -138,7 +138,7 @@
           
           if (!settings.settings.required || (settings.settings.required && parent_value != 0 && !settings.multiple)) {
           if(parent_value == 0){
-               options[options.length] = new Option(Drupal.t('Select Category'), 0);
+               options[options.length] = new Option(Drupal.t('Select a Category'), 0);
           } else {
                   options[options.length] = new Option(Drupal.t('Select Sub Category'), 0);
           }
@@ -252,12 +252,12 @@
       if (Drupal.settings.chosen) {
         // Remove element created by chosen.
         var elem_id = $(this).attr('id');
-        $('#' + elem_id.replace(/-/g, '_') + '_chzn').remove();
+        $('#' + elem_id.replace(/-/g, '_') + '_chosen').remove();
       }
       // Remove element.
       $(this).remove();
     });
-    //$triggering_element.nextAll('.chzn-container').remove();
+    //$triggering_element.nextAll('.chosen-container').remove();
     $triggering_element.nextAll('.shs-term-add-new-wrapper').remove();
     // Create next level (if the value is != 0).
     if ($triggering_element.val() == '_add_new_') {
@@ -452,9 +452,8 @@
       var selector = Drupal.settings.chosen.selector.replace(/:visible/, '');
 
       if ((settings.settings.use_chosen == 'always') || ((settings.settings.use_chosen == 'chosen') && ($element.is(selector) && $element.find('option').size() >= Drupal.settings.chosen.minimum))) {
-        $element.css({
-          width : ($element.width() < minWidth) ? minWidth : $element.width()
-        }).chosen(options);
+        options.width = (($element.width() < minWidth) ? minWidth : $element.width()) + 'px';
+        $element.chosen(options);
         return true;
       }
     }

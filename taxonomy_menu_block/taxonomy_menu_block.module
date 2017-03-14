@@ -826,28 +826,55 @@ function theme_taxonomy_menu_block($variables) {
     if (isset($term['nodes'])) {
       $term['name'] = $term['name'] . ' (' . $term['nodes'] . ')';
     }
-
+    
+if($tid == arg(2)) {
+    $class = "actives";
+          $expand = "in";
+          $arrow = "up";
+        } else {
+          $class = "";
+          $expand = "";
+          $arrow = "down";
+        }
+        
+    foreach($term['children'] as $child) {
+                $c_tids = taxonomy_get_term_by_name($child['name']);
+                $c_tid = reset($c_tids)->tid;
+         if($c_tid == arg(2)) { 
+            $class = "actives";
+            $expand = "in";
+            $arrow = "up"; 
+         } 
+     }
     if(count($term['children']) > 0) {
         
-    $output .='<div class="panel panel-default"><div class="panel-heading" role="tab" id="heading'.$i.'">'
+    $output .='<div class="panel panel-default"><div class="panel-heading '.$class.'" role="tab" id="heading'.$i.'">'
             . '<h4 class="panel-title">'
-            . '<a class="arrw" href="'.$term['path'].'"> '.$term['name'].'</a>'
+            . '<a class="arrw" href="'.url($term['path']).'"> '.$term['name'].'</a>'
             . '<a class="pull-right" data-toggle="collapse" data-parent="#accordion" href="#collapse'.$i.'" >'
-            . '<i class="more-less glyphicon glyphicon-menu-down"></i></a>'
+            . '<i class="more-less glyphicon glyphicon-menu-'.$arrow.'"></i></a>'
             . '</h4>'
             . '</div>';
-    $output .='<div id="collapse'.$i.'" class="panel-collapse collapse" role="tabpanel" aria-labelledby="heading'.$i.'">
+    $output .='<div id="collapse'.$i.'" class="panel-collapse collapse '.$expand.'" role="tabpanel" aria-labelledby="heading'.$i.'" style="height:auto !important">
                                 <div class="panel-body">';
                                    foreach($term['children'] as $child) {
-                                      $output .='<a href="'.$child['path'].'">'.$child['name'].'</a>'; 
+                                       $c_tids = taxonomy_get_term_by_name($child['name']);
+                                        $c_tid = reset($c_tids)->tid;
+                                        if($c_tid == arg(2)) { $class= "active"; } else { $class ="";}
+                                      $output .='<a href="'.url($child['path']).'" class="'.$class.'">'.$child['name'].'</a>'; 
                                    }
                           $output .='</div></div></div>';
     } else {
         if($term['depth'] == '0') {
+            if($tid == arg(2)) {
+        $class = "actives";
+        } else {
+          $class = "";
+        }
         $output .='<div class="panel panel-default">
-                            <div class="panel-heading" role="tab" id="heading'.$i.'">
+                            <div class="panel-heading '.$class.'" role="tab" id="heading'.$i.'">
                                 <h4 class="panel-title">
-                                    <a class="arrw" href="'.$term['path'].'"> '.$term['name'].'</a>
+                                    <a class="arrw" href="'.url($term['path']).'"> '.$term['name'].'</a>
                                 </h4>
                             </div>
                         </div>';
