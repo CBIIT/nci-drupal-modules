@@ -1,4 +1,5 @@
 <?php
+
 /**
  * @file
  * callback.inc
@@ -37,7 +38,7 @@ function js_callback_execute(array $info) {
   // Ensure callback function exists and can be invoked.
   elseif (!empty($info['callback function']) || function_exists($info['callback function'])) {
     if ($xhprof) {
-      xhprof_enable(0, array('ignored_functions' =>  array('call_user_func', 'call_user_func_array')));
+      xhprof_enable(0, array('ignored_functions' => array('call_user_func', 'call_user_func_array')));
     }
 
     // Execute the callback.
@@ -64,6 +65,7 @@ function js_callback_execute(array $info) {
  *   The callback info array, passed by reference.
  *
  * @throws Exception
+ *
  * @see _drupal_bootstrap_full()
  */
 function js_callback_bootstrap(array &$info) {
@@ -232,7 +234,7 @@ function js_callback_bootstrap(array &$info) {
  * @param array $info
  *   The callback info array, passed by reference.
  */
-function js_callback_process_request(&$info) {
+function js_callback_process_request(array &$info) {
   if ($info['process request'] === FALSE) {
     return;
   }
@@ -266,6 +268,12 @@ function js_callback_process_request(&$info) {
     if (function_exists($function)) {
       $f = new ReflectionFunction($function);
       foreach ($f->getParameters() as $param) {
+
+        // Don't add parameters that have no default value and are not in $_REQUEST
+        if (!$param->isDefaultValueAvailable() && !isset($data[$param->name])) {
+          continue;
+        }
+
         // Determine if there's a default value.
         $default = $param->isDefaultValueAvailable() ? $param->getDefaultValue() : NULL;
 

@@ -1,4 +1,5 @@
 <?php
+
 /**
  * @file
  * json.inc
@@ -89,7 +90,7 @@ function js_deliver_json($callback_result, array $info = NULL) {
   $output = drupal_json_encode($json);
 
   // Encode the stringed $output if the browser supports gzip compression.
-  if (strpos($_SERVER['HTTP_ACCEPT_ENCODING'], 'gzip') !== FALSE) {
+  if (isset($_SERVER['HTTP_ACCEPT_ENCODING']) && strpos($_SERVER['HTTP_ACCEPT_ENCODING'], 'gzip') !== FALSE) {
     $output = gzencode($output, 9);
     drupal_add_http_header('Content-Encoding', 'gzip');
     drupal_add_http_header('Vary', 'Accept-Encoding');

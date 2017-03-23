@@ -1,0 +1,118 @@
+<?php
+
+/**
+ * Implements hook_menu()
+ */
+function submit_ticket_menu() {
+  
+    $items['submit_ticket'] = array(
+		'title' => 'Submit Ticket',
+                'description' => 'Submit Ticket',
+		'page callback' => 'drupal_get_form',
+                'access arguments' => array('access submit ticket'),
+		'page arguments' => array('submit_ticket_form')
+	);
+    
+    return $items;
+}
+
+/**
+ * Implements hook_permission()
+ */
+function submit_ticket_permission() {
+	return array ('access submit ticket' => array (
+		      'title' => t ( 'Submit Ticket' )
+		    )
+	);
+}
+/**
+ * Implements hook_form()
+ */
+function submit_ticket_form($form,$form_state){
+    
+    $form = array();
+    $form['#method'] = 'POST';
+    $service_ID = isset($_GET['service_list']) ? $_GET['service_list'] : 0;
+    $serivceSelectedOption = isset ( $form_state ['values'] ['service_list'] ) ? $form_state ['values'] ['service_list'] : $service_ID;
+    $form['service_list'] = array(
+        '#title' => t('Services'),
+        '#type' => 'select',
+        '#id' => 'service_list',
+        '#default_value' => $serivceSelectedOption,
+        '#options' => get_services_category(),
+	'#ajax' => array (
+		'event' => 'change',
+		'callback' => 'get_service_list_callback',
+		'wrapper' => 'service_category_replace'
+			),
+    );
+    
+    $software_id = isset($_GET['software_id']) ? $_GET['software_id'] : 0;
+     
+    $form ['software_id'] = array (
+        '#id' => 'software_id',
+        '#type' => 'select',
+        '#title'=>'Software Name',
+        '#options' => software_section_options ( $serivceSelectedOption ) ,
+        '#prefix'=>'<div id="service_category_replace">',
+        '#suffix'=>'</div>',
+        '#default_value' => $software_id
+    );
+    
+    $form['submit'] = array(
+		'#type' => 'submit',
+		'#value' => t('Search'),
+    );
+    
+    return $form;
+}
+
+/**
+ * Implements call back method()
+ */
+function get_service_list_callback($form, $form_state) {
+    	return $form ['software_id'];
+}
+
+/**
+ * Implements software_name_list()
+ */
+function software_section_options($tid) {
+    
+      $nodes = array();
+  
+        $nodes = taxonomy_select_nodes($tid);
+          $software_list[] = '-Select-';
+	foreach ($nodes as $node) {
+            $node_info = node_load($node);
+		$software_list[$node_info->nid] = $node_info->title;
+	}
+	return $software_list;
+
+}
+
+/**
+ * Implements services_list()
+ */
+function get_services_category(){
+    
+    $vocabulary = taxonomy_vocabulary_machine_name_load('Services');
+    $terms = entity_load('taxonomy_term', FALSE, array('vid' => $vocabulary->vid));
+        $service_list[] = '-Select-';
+	foreach ($terms as $term) {
+		$service_list[$term->tid] = $term->name;
+	}
+	return $service_list;
+}
+
+/**
+ * Implements hook_form_submit()
+ */
+function submit_ticket_form_submit($form, &$form_state) {
+
+        $values = $form_state['values'];
+        $node = node_load($values['software_id']);
+        $url = $node->title['und']['0']['value'];
+        drupal_goto($url);
+}
+?>

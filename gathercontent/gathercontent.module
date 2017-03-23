@@ -1,0 +1,1727 @@
+<?php
+/**
+ * @file
+ * Main module file for GatherContent module.
+ */
+
+include_once 'includes/Content.inc';
+include_once 'includes/Project.inc';
+include_once 'includes/Template.inc';
+include_once 'gathercontent.theme.inc';
+
+use GatherContent\Content;
+use GatherContent\Project;
+use GatherContent\Template;
+
+/**
+ * Implements hook_permission().
+ */
+function gathercontent_permission() {
+  return array(
+    'administer gathercontent' => array(
+      'title' => t('Administer GatherContent'),
+      'description' => t('Access all GatherContent pages'),
+    ),
+    'administer mapping' => array(
+      'title' => t('Administer GatherContent mapping'),
+      'description' => t('Access all GatherContent mapping pages'),
+    ),
+    'create mapping' => array(
+      'title' => t('Create GatherContent mapping'),
+      'description' => t('Create GatherContent mapping'),
+    ),
+  );
+}
+
+/**
+ * Implements hook_menu().
+ */
+function gathercontent_menu() {
+  $items = array();
+  $items['admin/config/gathercontent'] = array(
+    'title' => 'GatherContent',
+    'page callback' => 'system_admin_menu_block_page',
+    'access arguments' => array('administer gathercontent'),
+    'file' => 'system.admin.inc',
+    'file path' => drupal_get_path('module', 'system'),
+  );
+  $items['admin/config/gathercontent/config'] = array(
+    'title' => 'Authentication',
+    'page callback' => 'drupal_get_form',
+    'page arguments' => array('gathercontent_authentication_form'),
+    'access arguments' => array('administer gathercontent'),
+    'file' => 'gathercontent.authentication.inc',
+  );
+  $items['admin/config/gathercontent/config/config'] = array(
+    'title' => 'Authentication',
+    'access arguments' => array('administer gathercontent'),
+    'type' => MENU_DEFAULT_LOCAL_TASK,
+  );
+  $items['admin/config/gathercontent/config/test'] = array(
+    'title' => 'Test connection',
+    'page callback' => 'gathercontent_authentication_test_page',
+    'access arguments' => array('administer gathercontent'),
+    'file' => 'gathercontent.authentication.inc',
+    'type' => MENU_LOCAL_TASK,
+  );
+  $items['admin/config/gathercontent/import-config'] = array(
+    'title' => 'Import configuration',
+    'page callback' => 'drupal_get_form',
+    'page arguments' => array('gathercontent_import_config_form'),
+    'access arguments' => array('administer gathercontent'),
+    'file' => 'gathercontent.config.inc',
+  );
+  $items['admin/config/gathercontent/mapping/create'] = array(
+    'title' => 'Add GatherContent Template',
+    'page callback' => 'drupal_get_form',
+    'page arguments' => array('gathercontent_mapping_form_templates'),
+    'access arguments' => array(
+      'administer gathercontent',
+    ),
+    'file' => 'forms/gathercontent.mapping-create.inc',
+  );
+  $items['admin/config/gathercontent/mapping/%/delete'] = array(
+    'title' => 'Delete GatherContent Mapping',
+    'page callback' => 'drupal_get_form',
+    'page arguments' => array('gathercontent_mapping_delete_form', 4),
+    'access arguments' => array(
+      'administer gathercontent',
+    ),
+    'type' => MENU_CALLBACK,
+    'file' => 'forms/gathercontent.mapping-delete.inc',
+  );
+  $items['admin/config/gathercontent/mapping/%/edit'] = array(
+    'title' => 'Edit GatherContent Mapping',
+    'page callback' => 'drupal_get_form',
+    'page arguments' => array('gathercontent_mapping_edit_form', 4),
+    'access arguments' => array(
+      'administer gathercontent',
+    ),
+    'type' => MENU_CALLBACK,
+    'file' => 'forms/gathercontent.mapping-edit.inc',
+  );
+  $items['admin/config/gathercontent/import'] = array(
+    'title' => 'Import Content',
+    'page callback' => 'gathercontent_import_form',
+    'access arguments' => array(
+      'administer gathercontent',
+    ),
+    'file' => 'gathercontent.import.inc',
+  );
+
+  $items['admin/config/gathercontent/import-config'] = array(
+    'title' => 'Import Configuration',
+    'page callback' => 'drupal_get_form',
+    'page arguments' => array('gathercontent_import_config_form'),
+    'access arguments' => array('administer gathercontent'),
+    'file' => 'gathercontent.config.inc',
+  );
+
+  return $items;
+}
+
+/**
+ * Implements hook_menu_local_tasks_alter().
+ *
+ * {@inheritdoc}
+ */
+function gathercontent_menu_local_tasks_alter(&$data, $router_item, $root_path) {
+  if ($root_path === 'admin/config/gathercontent/mapping') {
+    $data['actions']['output'][] = array(
+      '#theme' => 'menu_local_task',
+      '#link' => array(
+        'title' => t('Add new GatherContent template'),
+        'href' => 'admin/config/gathercontent/mapping/create',
+        'localized_options' => array(
+          'attributes' => array(
+            'title' => t('Add new GatherContent template'),
+          ),
+        ),
+      ),
+    );
+  }
+}
+
+/**
+ * Implements hook_entity_info().
+ */
+function gathercontent_entity_info() {
+  $info = array();
+
+  $info['gathercontent_mapping'] = array(
+    'label' => t('Mapping'),
+    'base table' => 'gathercontent_mapping',
+    'entity keys' => array(
+      'id' => 'id',
+      'label' => 'content_type',
+    ),
+    'module' => 'gathercontent',
+    'entity class' => 'Entity',
+    'controller class' => 'EntityAPIController',
+    'views controller class' => 'EntityDefaultViewsController',
+    'fieldable' => FALSE,
+  );
+
+  $info['gathercontent_operation'] = array(
+    'label' => t('gathercontent Operation'),
+    'base table' => 'gathercontent_operation',
+    'entity keys' => array(
+      'id' => 'uuid',
+      'label' => 'uuid',
+    ),
+    'module' => 'gathercontent',
+    'entity class' => 'Entity',
+    'controller class' => 'EntityAPIController',
+    'views controller class' => 'EntityDefaultViewsController',
+    'fieldable' => FALSE,
+  );
+
+  $info['gathercontent_operation_item'] = array(
+    'label' => t('GC Operation Item'),
+    'base table' => 'gathercontent_operation_item',
+    'entity keys' => array(
+      'id' => 'id',
+    ),
+    'module' => 'gathercontent',
+    'entity class' => 'GatherContentOperationItem',
+    'controller class' => 'EntityAPIController',
+    'views controller class' => 'EntityDefaultViewsController',
+    'fieldable' => FALSE,
+  );
+
+  return $info;
+}
+
+/**
+ * Implements hook_entity_property_info().
+ */
+function gathercontent_entity_property_info() {
+  $info = array();
+
+  $info['gathercontent_mapping']['properties']['id'] = array(
+    'label' => t('Mapping ID'),
+    'description' => t('The ID of the mapping.'),
+    'type' => 'integer',
+    'schema field' => 'id',
+  );
+  $info['gathercontent_mapping']['properties']['gathercontent_project_id'] = array(
+    'label' => t('GC Project ID'),
+    'description' => t('The ID of the project in GatherContent.'),
+    'type' => 'integer',
+    'schema field' => 'gathercontent_project_id',
+  );
+  $info['gathercontent_mapping']['properties']['gathercontent_project'] = array(
+    'label' => t('GC Project'),
+    'description' => t('Project name in GatherContent.'),
+    'type' => 'text',
+    'schema field' => 'gathercontent_project',
+  );
+  $info['gathercontent_mapping']['properties']['gathercontent_template_id'] = array(
+    'label' => t('GC Template ID'),
+    'description' => t('The ID of template in GatherContent.'),
+    'type' => 'integer',
+    'schema field' => 'gathercontent_template_id',
+  );
+  $info['gathercontent_mapping']['properties']['gathercontent_template'] = array(
+    'label' => t('GC Template'),
+    'description' => t('Name of template in GatherContent.'),
+    'type' => 'text',
+    'schema field' => 'gathercontent_template',
+  );
+  $info['gathercontent_mapping']['properties']['content_type'] = array(
+    'label' => t('Content type machine name'),
+    'description' => t('Content type machine name.'),
+    'type' => 'token',
+    'schema field' => 'content_type',
+  );
+  $info['gathercontent_mapping']['properties']['content_type_name'] = array(
+    'label' => t('Content type name'),
+    'description' => t('Content type human-readable name.'),
+    'type' => 'text',
+    'computed' => TRUE,
+    'getter callback' => 'entity_property_verbatim_set',
+    'options list' => 'node_type_get_names',
+    'schema field' => 'content_type',
+  );
+  $info['gathercontent_mapping']['properties']['created'] = array(
+    'label' => t('Created'),
+    'description' => t('Timestamp of mapping creation'),
+    'type' => 'date',
+    'getter callback' => 'entity_property_verbatim_set',
+    'schema field' => 'created',
+  );
+  $info['gathercontent_mapping']['properties']['updated_drupal'] = array(
+    'label' => t('Updated (Drupal)'),
+    'description' => t('Timestamp of mapping update in Drupal'),
+    'type' => 'date',
+    'schema field' => 'updated_drupal',
+  );
+  $info['node']['properties']['gathercontent_mapping_id'] = array(
+    'label' => t("GC Mapping ID"),
+    'type' => 'integer',
+    'description' => t("The ID of created GatherContent mapping"),
+    'getter callback' => 'entity_property_verbatim_get',
+    'setter callback' => 'entity_property_verbatim_set',
+  );
+  $info['node']['properties']['gathercontent_id'] = array(
+    'label' => t("GC ID"),
+    'type' => 'integer',
+    'description' => t("The ID of content in GatherContent"),
+    'getter callback' => 'entity_property_verbatim_get',
+    'setter callback' => 'entity_property_verbatim_set',
+  );
+  $info['node']['properties']['gathercontent_import_status'] = array(
+    'label' => t("GC Import status"),
+    'type' => 'text',
+    'description' => t("Status of import from GatherContent"),
+  );
+  $info['file']['properties']['gathercontent_id'] = array(
+    'label' => t("GC ID"),
+    'type' => 'integer',
+    'description' => t("The ID of file in GatherContent"),
+  );
+  $info['gathercontent_operation']['properties']['uuid'] = array(
+    'label' => t('Operation UUID'),
+    'type' => 'text',
+    'schema field' => 'uuid',
+  );
+  $info['gathercontent_operation']['properties']['type'] = array(
+    'label' => t('Operation Type'),
+    'type' => 'text',
+    'schema field' => 'type',
+  );
+  $info['gathercontent_operation_item']['properties']['id'] = array(
+    'label' => t('Operation Item ID'),
+    'type' => 'integer',
+    'schema field' => 'id',
+  );
+  $info['gathercontent_operation_item']['properties']['operation_uuid'] = array(
+    'label' => t('Operation UUID'),
+    'type' => 'text',
+    'schema field' => 'operation_uuid',
+  );
+  $info['gathercontent_operation_item']['properties']['item_status'] = array(
+    'label' => t('Operation Item Status'),
+    'type' => 'text',
+    'schema field' => 'item_status',
+  );
+  $info['gathercontent_operation_item']['properties']['item_status_color'] = array(
+    'label' => t('Operation Item Status Color'),
+    'type' => 'text',
+    'schema field' => 'item_status_color',
+  );
+  $info['gathercontent_operation_item']['properties']['item_name'] = array(
+    'label' => t('Operation Item Name'),
+    'type' => 'text',
+    'schema field' => 'item_name',
+  );
+  $info['gathercontent_operation_item']['properties']['template_name'] = array(
+    'label' => t('Operation Item Template Name'),
+    'type' => 'text',
+    'schema field' => 'template_name',
+  );
+  $info['gathercontent_operation_item']['properties']['status'] = array(
+    'label' => t('Operation Item Operation Status'),
+    'type' => 'text',
+    'schema field' => 'status',
+  );
+  $info['gathercontent_operation_item']['properties']['gathercontent_id'] = array(
+    'label' => t('Operation Item GC ID'),
+    'type' => 'integer',
+    'schema field' => 'gathercontent_id',
+  );
+  $info['gathercontent_operation_item']['properties']['nid'] = array(
+    'label' => t('Operation Item NID'),
+    'type' => 'integer',
+    'schema field' => 'nid',
+  );
+
+  return $info;
+}
+
+/**
+ * Implements hook_views_api().
+ */
+function gathercontent_views_api() {
+  return array(
+    'api' => 3,
+    'path' => drupal_get_path('module', 'gathercontent') . '/views',
+  );
+}
+
+/**
+ * Implements hook_action_info().
+ *
+ * @inheritdoc
+ */
+function gathercontent_action_info() {
+  return array(
+    'gathercontent_update' => array(
+      'type' => 'entity',
+      'label' => t('Update from GatherContent'),
+      'configurable' => FALSE,
+      'triggers' => array('any'),
+      'behavior' => array('create_property'),
+      'vbo_configurable' => FALSE,
+      'pass rows' => TRUE,
+    ),
+    'gathercontent_upload' => array(
+      'type' => 'entity',
+      'label' => t('Upload to GatherContent'),
+      'configurable' => FALSE,
+      'triggers' => array('any'),
+      'behavior' => array('create_property'),
+      'vbo_configurable' => FALSE,
+      'pass rows' => TRUE,
+    ),
+  );
+}
+
+/**
+ * Callback for `gathercontent_update` action.
+ *
+ * This function is never called, because we are using separated method for
+ * execution for this functionality.
+ * Update content from GatherContent.
+ *
+ * @param object $entity
+ *   Entity, we want to update.
+ * @param array $context
+ *   Context of action.
+ *
+ * @see gathercontent_action_info
+ */
+function gathercontent_update(&$entity, array &$context) {
+  // This will be never called.
+}
+
+/**
+ * Callback for `gathercontent_upload` action.
+ *
+ * This function is never called, because we are using separated method for
+ * execution for this functionality.
+ *
+ * Upload content to GatherContent.
+ *
+ * @param object $entity
+ *   Entity, we want to upload.
+ * @param array $context
+ *   Context of action.
+ *
+ * @see gathercontent_action_info
+ * @see gathercontent_views_vbo_upload
+ */
+function gathercontent_upload(&$entity, array &$context) {
+  // This will be never called.
+}
+
+/**
+ * Helper function for fetching data from GatherContent.
+ *
+ * @param int $gathercontent_id
+ *   ID of GatherContent piece of content.
+ * @param string $uuid
+ *   UUID of \Drupal\gathercontent\Entity\Operation.
+ * @param bool $drupal_status
+ *   Drupal status - published/unpublished.
+ * @param null $status
+ * @param null|object $entity
+ *   Object of entity, if we are updating exiting content.
+ * @param string|null $parent_menu_item
+ *   Parent menu item ID if we want to create menu item.
+ * @param string $node_update_method
+ *   Name of the node update method.
+ *
+ * @return int|FALSE
+ *   Return nid if operation was successful.
+ */
+function _gathercontent_fetcher($gathercontent_id, $uuid, $drupal_status, $status = NULL, $entity = NULL, $parent_menu_item = NULL, $node_update_method) {
+
+  global $user;
+
+  $content_obj = new Content();
+  $content = $content_obj->getContent($gathercontent_id);
+
+  if (!empty($status)) {
+    $status_obj = new Project();
+    $status = $status_obj->getStatus($content->project_id, $status);
+  }
+
+  $temp_obj = new Template();
+  $template = $temp_obj->getTemplate($content->template_id);
+
+  $operation_item = entity_create('gathercontent_operation_item', array(
+    'operation_uuid' => $uuid,
+    'item_status' => (!empty($status) ? $status->name : $content->status->data->name),
+    'item_status_color' => (!empty($status) ? $status->color : $content->status->data->color),
+    'template_name' => $template->name,
+    'item_name' => $content->name,
+    'gathercontent_id' => $gathercontent_id,
+  ));
+
+  // Check if mapping exists.
+  $query = new EntityFieldQuery();
+  if (is_null($entity)) {
+    $result = $query->entityCondition('entity_type', 'gathercontent_mapping')
+      ->propertyCondition('gathercontent_project_id', $content->project_id)
+      ->propertyCondition('gathercontent_template_id', $content->template_id)
+      ->execute();
+  }
+  else {
+    $result = $query->entityCondition('entity_type', 'gathercontent_mapping')
+      ->propertyCondition('id', $entity->gathercontent_mapping_id)
+      ->execute();
+  }
+
+  if (isset($result['gathercontent_mapping'])) {
+    // If mapping exists, start mapping remote fields to local ones.
+    $mapping_ids = array_keys($result['gathercontent_mapping']);
+    $entities = entity_load('gathercontent_mapping', $mapping_ids);
+    $mapping = reset($entities);
+
+    $mapping_data = unserialize($mapping->data);
+
+    if (empty($mapping_data)) {
+      return FALSE;
+    }
+
+    $mapping_data_copy = $mapping_data;
+    $first = array_shift($mapping_data_copy);
+    $langcode = isset($first['language']) ? $first['language'] : LANGUAGE_NONE;
+
+    $node = gathercontent_get_destination_node($gathercontent_id, $node_update_method ,$mapping->content_type);
+
+    $node->gathercontent_mapping_id->set($mapping->id);
+    $node->gathercontent_id->set($content->id);
+    if ($node->is_new->value()) {
+      $node->author->set($user->uid);
+      $node->status->set($drupal_status);
+    }
+    $node->language->set($langcode);
+
+    if ($node !== FALSE) {
+      $metatags = array();
+      $_title_is_mapped = FALSE;
+      try {
+        $content_obj = new Content();
+        $files = $content_obj->getFiles($gathercontent_id);
+        foreach ($content->config as $pane) {
+          $is_translatable = module_exists('entity_translation')
+            && entity_translation_node_supported_type($mapping->content_type)
+            && isset($mapping_data[$pane->name]['language'])
+            && ($mapping_data[$pane->name]['language'] != LANGUAGE_NONE);
+          if ($is_translatable) {
+            $language = $mapping_data[$pane->name]['language'];
+          }
+          else {
+            $language = LANGUAGE_NONE;
+          }
+          foreach ($pane->elements as $field) {
+            if (isset($mapping_data[$pane->name]['elements'][$field->name]) && !empty($mapping_data[$pane->name]['elements'][$field->name])) {
+              $local_field_name = $mapping_data[$pane->name]['elements'][$field->name];
+              if (isset($mapping_data[$pane->name]['type']) && ($mapping_data[$pane->name]['type'] === 'content') || !isset($mapping_data[$pane->name]['type'])) {
+                gathercontent_gathercontent_process_content_pane($node, $local_field_name, $field, $mapping->content_type, $is_translatable, $language, $files, $_title_is_mapped);
+              }
+              elseif (isset($mapping_data[$pane->name]['type']) && ($mapping_data[$pane->name]['type'] === 'metatag')) {
+                gathercontent_gathercontent_process_metatag_pane($node, $metatags, $gathercontent_id, $local_field_name, $field, $mapping->content_type, $is_translatable, $language);
+              }
+            }
+            else {
+              $operation_item->status = "Operation failed: Template fields mismatch.";
+              entity_save('gathercontent_operation_item', $operation_item);
+            }
+          }
+          // We need to create new translation if is translatable.
+          if ($is_translatable && (!isset($node->language) || empty($node->language))) {
+            $node->language->set($language);
+            $node->save();
+          }
+          elseif ($is_translatable && (isset($node->language) || !empty($node->language))) {
+            $handler = entity_translation_get_handler('node', $node);
+            $translation = array(
+              'translate' => 0,
+              'status' => 1,
+              'language' => $language,
+              'source' => ($language === $node->language->value() ? '' : $node->language->value()),
+            );
+            $handler->setTranslation($translation, $node->value());
+          }
+        }
+
+        if (!$is_translatable && !$_title_is_mapped) {
+          $node->title->set($content->name);
+        }
+
+        drupal_alter('gathercontent_pre_node_save', $node, $content, $files);
+        $node->save();
+
+        // Create menu link item.
+        if (module_exists('menu')) {
+          menu_node_prepare($node->raw());
+          if (!(bool) $node->raw()->menu['mlid']) {
+            if ($is_translatable) {
+              if (module_exists('locale')) {
+                $languages = locale_language_list();
+                $tsid = NULL;
+                foreach ($languages as $langcode => $language) {
+                  if (module_exists('title') && title_field_replacement_enabled('node', $node->get('type')
+                      ->value(), 'title')
+                  ) {
+                    if (language_default('language') === $langcode) {
+                      gathercontent_create_menu_link($node->nid->value(), $node->title->value(), $parent_menu_item, $langcode, $tsid);
+                    }
+                    else {
+                      $title_field = title_field_replacement_info('node', 'title')['field']['field_name'];
+                      gathercontent_create_menu_link($node->nid->value(), $node->language($langcode)->{$title_field}->value(), $parent_menu_item, $langcode, $tsid);
+                    }
+                  }
+                  else {
+                    gathercontent_create_menu_link($node->nid->value(), $node->language($langcode)->title->value(), $parent_menu_item, $langcode, $tsid);
+                  }
+                }
+              }
+            }
+            else {
+              gathercontent_create_menu_link($node->nid->value(), $node->title->value(), $parent_menu_item);
+            }
+          }
+        }
+        // Save metatags.
+        if (module_exists('metatag') && metatag_entity_supports_metatags('node', $mapping->content_type)) {
+          module_load_include('module', 'metatag');
+          metatag_metatags_save('node', $node->nid->value(), $node->vid->value(), $metatags);
+        }
+
+        module_invoke_all('gathercontent_post_node_save', $node, $content, $files);
+
+        $operation_item->status = "Success";
+        $operation_item->nid = $node->nid->value();
+        entity_save('gathercontent_operation_item', $operation_item);
+        return $node->nid->value();
+      }
+      catch (\Exception $e) {
+        watchdog('gathercontent_import', print_r($e, TRUE), array(), WATCHDOG_ERROR);
+        $operation_item->status = "Operation failed:" . $e->getMessage();
+        entity_save('gathercontent_operation_item', $operation_item);
+        return FALSE;
+      }
+    }
+    else {
+      $operation_item->status = "System error, please contact you administrator.";
+      entity_save('gathercontent_operation_item', $operation_item);
+      return FALSE;
+    }
+  }
+  else {
+    $operation_item->status = "Operation failed: Template not mapped.";
+    entity_save('gathercontent_operation_item', $operation_item);
+    return FALSE;
+  }
+}
+
+/**
+ * @param int $gathercontent_id
+ *   ID of item in GatherContent.
+ * @param string $node_update_method
+ *   Name of the node update method.
+ * @param int $node_type_id
+ *   ID of the node type.
+ *
+ * @return EntityMetadataWrapper
+ */
+function gathercontent_get_destination_node($gathercontent_id, $node_update_method, $node_type_id) {
+  switch ($node_update_method) {
+    case 'update_if_not_changed';
+      $query =  new EntityFieldQuery();
+      $query->entityCondition('entity_type', 'node')
+        ->propertyCondition('gathercontent_id', $gathercontent_id)
+        ->propertyOrderBy('created', 'DESC')
+        ->range(0, 1);
+      $result = $query->execute();
+
+      if (!empty($result['node'])) {
+        $node = node_load(reset($result['node'])->nid);
+
+        $operation_query =  new EntityFieldQuery();
+        $operation_query->entityCondition('entity_type', 'gathercontent_operation_item')
+          ->propertyCondition('gathercontent_id', $gathercontent_id)
+          ->propertyOrderBy('created', 'DESC')
+          ->range(0, 1);
+        $o_result = $operation_query->execute();
+
+        $operation_item = entity_load('gathercontent_operation_item', reset($o_result['gathercontent_operation_item']));
+        $operation_item = reset($operation_item);
+
+        if ($node->changed === $operation_item->changed) {
+          return entity_metadata_wrapper('node', $node);
+        }
+      }
+
+      break;
+
+    case 'always_update';
+      $query =  new EntityFieldQuery();
+      $query->entityCondition('entity_type', 'node')
+        ->propertyCondition('gathercontent_id', $gathercontent_id)
+        ->propertyOrderBy('created', 'DESC')
+        ->range(0, 1);
+      $result = $query->execute();
+
+      if (!empty($result['node'])) {
+        return entity_metadata_wrapper('node', reset($result['node'])->nid);
+      }
+
+      break;
+  }
+
+  return entity_metadata_wrapper('node', entity_create('node', ['type' => $node_type_id]));
+}
+
+/**
+ * @param EntityMetadataWrapper $node
+ *   Object of node.
+ * @param array $metatags
+ *   Array of metatags.
+ * @param int $gathercontent_id
+ *   ID of item in GatherContent.
+ * @param string $local_field_name
+ *   Name of local Drupal field.
+ * @param object $field
+ *   Object of GatherContent field.
+ * @param string $content_type
+ *   Name of Content type, we are mapping to.
+ * @param bool $is_translatable
+ *   Indicator if node is translatable.
+ * @param string $language
+ *   Language of translation if applicable.
+ *
+ * @throws \Exception
+ */
+function gathercontent_gathercontent_process_metatag_pane(EntityMetadataWrapper &$node, &$metatags, $gathercontent_id, $local_field_name, $field, $content_type, $is_translatable = FALSE, $language = LANGUAGE_NONE) {
+  if (module_exists('metatag') && metatag_entity_supports_metatags('node', $content_type)) {
+    $metatags[$language][$local_field_name] = array('value' => $field->value);
+  }
+  else {
+    throw new Exception("Metatag module not enabled or entity doesn't support 
+    metatags while trying to map values woth metatag content.");
+  }
+}
+
+/**
+ * @param EntityMetadataWrapper $node
+ *   Object of node.
+ * @param int $gathercontent_id
+ *   ID of item in GatherContent.
+ * @param string $local_field_name
+ *   Name of local Drupal field.
+ * @param object $field
+ *   Object of GatherContent field.
+ * @param string $content_type
+ *   Name of Content type, we are mapping to.
+ * @param bool $is_translatable
+ *   Indicator if node is translatable.
+ * @param string $language
+ *   Language of translation if applicable.
+ */
+function gathercontent_gathercontent_process_content_pane(EntityMetadataWrapper &$node, $local_field_name, $field, $content_type, $is_translatable, $language, $files, &$_title_is_mapped = FALSE) {
+  $field_info = field_info_field($local_field_name);
+  $is_translatable = $is_translatable && $field_info['translatable'];
+  switch ($field->type) {
+    case 'files':
+      gathercontent_gathercontent_process_files_field($node, $local_field_name, $field->name, $is_translatable, $language, $files);
+      break;
+
+    case 'choice_radio':
+      gathercontent_gathercontent_process_choice_radio_field($node, $local_field_name, $field->name, $is_translatable, $language, $field->options);
+      break;
+
+    case 'choice_checkbox':
+      gathercontent_gathercontent_process_choice_checkbox_field($node, $local_field_name, $field->name, $is_translatable, $language, $field->options);
+      break;
+
+    case 'section':
+      gathercontent_gathercontent_process_section_field($node, $local_field_name, $field->name, $is_translatable, $language, $field);
+      break;
+
+    default:
+      if ($local_field_name === 'title') {
+        $node->title->set($field->value);
+        $_title_is_mapped = TRUE;
+      }
+      else {
+        if ($is_translatable) {
+          if (module_exists('title') && title_field_replacement_enabled('node', $content_type, 'title')
+            && title_field_replacement_info('node', 'title')['field']['field_name'] === $local_field_name
+          ) {
+            // If we are setting title for default language,
+            // we set it just into title attribute and
+            // it's synced automatically.
+            // @see http://andrejgaluf.com/blog/2015-11-27/drupal-7-setting-title-module-field-programmatically
+            if ($language === $node->language->value()) {
+              $node->title->set($field->value);
+            }
+            else {
+              $node->language($language)->{$local_field_name}->set($field->value);
+            }
+            $_title_is_mapped = TRUE;
+
+          }
+          else {
+            $node->language($language)->{$local_field_name}->set(array(
+              'value' => $field->value,
+              'format' => ($field->plain_text ? 'plain_text' : 'filtered_gathercontent_html'),
+            ));
+          }
+        }
+        else {
+          if (module_exists('title') && title_field_replacement_enabled('node', $content_type, 'title')
+            && title_field_replacement_info('node', 'title')['field']['field_name'] === $local_field_name
+          ) {
+            // If we are setting title for default language,
+            // we set it just into title attribute and
+            // it's synced automatically.
+            // @see http://andrejgaluf.com/blog/2015-11-27/drupal-7-setting-title-module-field-programmatically
+            if ($language === $node->language->value()) {
+              $node->title->set($field->value);
+            }
+            else {
+              $node->language($language)->{$local_field_name}->set($field->value);
+            }
+            $_title_is_mapped = TRUE;
+          }
+          else {
+            $node->{$local_field_name}->set(array(
+              'value' => $field->value,
+              'format' => ($field->plain_text ? 'plain_text' : 'filtered_gathercontent_html'),
+            ));
+          }
+        }
+      }
+      break;
+  }
+}
+
+/**
+ * @param $nid
+ * @param $title
+ * @param $plid
+ * @param null $lang
+ * @param null $tsid
+ */
+function gathercontent_create_menu_link($nid, $title, $plid, $lang = NULL, &$tsid = NULL) {
+  $weight = 1;
+  if (!empty($plid)) {
+    if (is_null($lang) || $lang === LANGUAGE_NONE) {
+      // Single language node.
+      list($menu_name, $mlid) = explode(':', $plid);
+      if ($menu_name === 'node') {
+        _gathercontent_get_menu_by_gathercontent_id($mlid, $menu_name);
+      }
+      $link = array(
+        'link_path' => 'node/' . $nid,
+        'link_title' => $title,
+        'menu_name' => $menu_name,
+        'plid' => $mlid,
+        'weight' => $weight,
+      );
+      menu_link_save($link);
+    }
+    elseif (module_exists('i18n_menu')) {
+      if (!is_null($lang) && is_null($tsid)) {
+        // Multi language node - first language.
+        $menu_translation_set = i18n_translation_set_create('menu_link');
+        list($menu_name, $mlid) = explode(':', $plid);
+        if ($menu_name === 'node') {
+          _gathercontent_get_menu_by_gathercontent_id($mlid, $menu_name, $lang);
+        }
+        $link = array(
+          'link_path' => 'node/' . $nid,
+          'link_title' => $title,
+          'menu_name' => $menu_name,
+          'plid' => $mlid,
+          'weight' => $weight,
+          'language' => $lang,
+        );
+        menu_link_save($link);
+
+        $menu_translation_set->add_item($link);
+        $menu_translation_set->save_translations();
+
+        $tsid = $menu_translation_set->tsid;
+      }
+      elseif (!is_null($lang) && !is_null($tsid)) {
+        // Multi language node - other language.
+        $menu_translation_set = i18n_translation_set_load($tsid);
+        list($menu_name, $mlid) = explode(':', $plid);
+        if ($menu_name === 'node') {
+          _gathercontent_get_menu_by_gathercontent_id($mlid, $menu_name, $lang);
+        }
+        elseif ($mlid != 0) {
+          // Load parent translation.
+          $item = menu_link_load($mlid);
+          $translation_set = i18n_translation_set_load($item['i18n_tsid']);
+          $translations = $translation_set->get_translations();
+          $mlid = $translations[$lang]['mlid'];
+        }
+        $link = array(
+          'link_path' => 'node/' . $nid,
+          'link_title' => $title,
+          'menu_name' => $menu_name,
+          'plid' => $mlid,
+          'language' => $lang,
+        );
+
+        menu_link_save($link);
+
+        $menu_translation_set->add_item($link);
+        $menu_translation_set->save_translations();
+      }
+    }
+  }
+}
+
+/**
+ * @param $mlid
+ * @param $menu_name
+ */
+function _gathercontent_get_menu_by_gathercontent_id(&$mlid, &$menu_name, $language = NULL) {
+  // Load node by gathercontent_id.
+  $query = new EntityFieldQuery();
+  $node_result = $query->entityCondition('entity_type', 'node')
+    ->propertyCondition('gathercontent_id', $mlid)
+    ->execute();
+  if (isset($node_result['node'])) {
+    // Load menu_link by node_id.
+    $nodes = reset(array_keys($node_result['node']));
+
+    $query = db_select('menu_links', 'ml');
+    $query->condition('link_path', 'node/' . $nodes);
+    if (!is_null($language)) {
+      $query->condition('language', $language);
+    }
+    $query->fields('ml');
+    $result = $query->execute()->fetchAllAssoc('mlid');
+    if (!empty($result)) {
+      $ml_object = reset($result);
+      $menu_name = $ml_object->menu_name;
+      $mlid = $ml_object->mlid;
+    }
+  }
+}
+
+/**
+ * @param EntityMetadataWrapper $node
+ *   Object of node.
+ * @param string $local_field_name
+ *   Local field name.
+ * @param string $gathercontent_field_name
+ *   Name of field in GatherContent.
+ * @param bool $is_translatable
+ *   Indicator if node is translatable.
+ * @param string $language
+ *   Language of translation if applicable.
+ * @param object $field
+ *   Object with field attributes.
+ */
+function gathercontent_gathercontent_process_section_field(EntityMetadataWrapper &$node, $local_field_name, $gathercontent_field_name, $is_translatable = FALSE, $language = 'und', $field) {
+  if ($is_translatable) {
+    $node->language($language)->$local_field_name->set(array(
+      'value' => '<h3>' . $field->title . '</h3>' . $field->subtitle,
+      'format' => 'filtered_gathercontent_html',
+    ));
+  }
+  else {
+    $node->$local_field_name->set(array(
+      'value' => '<h3>' . $field->title . '</h3>' . $field->subtitle,
+      'format' => 'filtered_gathercontent_html',
+    ));
+  }
+}
+
+/**
+ * @param EntityMetadataWrapper $node
+ *   Object of node.
+ * @param string $local_field_name
+ *   Local field name.
+ * @param string $gathercontent_field_name
+ *   Name of field in GatherContent.
+ * @param bool $is_translatable
+ *   Indicator if node is translatable.
+ * @param string $language
+ *   Language of translation if applicable.
+ * @param array $options
+ *   Array of options.
+ */
+function gathercontent_gathercontent_process_choice_checkbox_field(EntityMetadataWrapper &$node, $local_field_name, $gathercontent_field_name, $is_translatable = FALSE, $language = 'und', $options) {
+  foreach ($node->$local_field_name->getIterator() as $delta => $item) {
+    $node->$local_field_name->set(array(NULL));
+  }
+  $node->save(TRUE);
+  $selected_options = array();
+  foreach ($options as $option) {
+    if ($option->selected) {
+      $selected_options[] = $option->name;
+    }
+    if ($is_translatable) {
+      $node->language($language)->$local_field_name = $selected_options;
+    }
+    else {
+      $node->$local_field_name = $selected_options;
+    }
+  }
+}
+
+/**
+ * @param EntityMetadataWrapper $node
+ *   Object of node.
+ * @param string $local_field_name
+ *   Local field name.
+ * @param string $gathercontent_field_name
+ *   Name of field in GatherContent.
+ * @param bool $is_translatable
+ *   Indicator if node is translatable.
+ * @param string $language
+ *   Language of translation if applicable.
+ * @param array $options
+ *   Array of options.
+ */
+function gathercontent_gathercontent_process_choice_radio_field(EntityMetadataWrapper &$node, $local_field_name, $gathercontent_field_name, $is_translatable = FALSE, $language = 'und', $options) {
+  foreach ($options as $option) {
+    if ($option->selected) {
+      if (isset($option->value)) {
+        if ($is_translatable) {
+          $node->language($language)->$local_field_name->set($option->value);
+        }
+        else {
+          $node->$local_field_name->set($option->value);
+        }
+      }
+      else {
+        if ($is_translatable) {
+          $node->language($language)->$local_field_name->set($option->name);
+        }
+        else {
+          $node->$local_field_name->set($option->name);
+        }
+      }
+    }
+  }
+}
+
+/**
+ *
+ * @param EntityMetadataWrapper $node
+ *   Object of node.
+ * @param string $local_field_name
+ *   Local field name.
+ * @param string $gathercontent_field_name
+ *   Name of field in GatherContent.
+ * @param bool $is_translatable
+ *   Indicator if node is translatable.
+ * @param string $language
+ *   Language of translation if applicable.
+ * @param array $files
+ *   Array of remote files.
+ */
+function gathercontent_gathercontent_process_files_field(EntityMetadataWrapper &$node, $local_field_name, $gathercontent_field_name, $is_translatable = FALSE, $language = 'und', $files) {
+  $found_files = array();
+  $field_info = field_info_field($local_field_name);
+  foreach ($files as $file) {
+    if ($file->field === $gathercontent_field_name) {
+      $found = FALSE;
+      if (!is_null($node->{$local_field_name}->value())) {
+        foreach ($node->{$local_field_name}->value() as $local_file_field) {
+          if ($local_file_field['gathercontent_id'] === $file->id) {
+            $found = TRUE;
+          }
+        }
+      }
+
+      if (!$found) {
+        $local_file = file_save_data(file_get_contents($file->url), 'public://' . $file->filename);
+        $local_file->gathercontent_id = $file->id;
+        file_save($local_file);
+        if ($field_info['type'] === 'file') {
+          $file_data = array('fid' => $local_file->fid, 'display' => TRUE);
+        }
+        else {
+          $file_data = array('fid' => $local_file->fid);
+        }
+
+        $found_files[] = $file_data;
+      }
+    }
+  }
+
+  $is_multiple = $field_info['cardinality'] != 1;
+  if (!$is_multiple) {
+    $found_files = reset($found_files);
+  }
+
+  if ($is_translatable) {
+    $node->language($language)->{$local_field_name}->set($found_files);
+  }
+  else {
+    $node->{$local_field_name}->set($found_files);
+  }
+}
+
+/**
+ * Implements hook_views_pre_render().
+ *
+ * Show real-time data in views resources "effective" way.
+ */
+function gathercontent_views_pre_render(&$view) {
+  if ($view->name == 'update') {
+    $results = &$view->result;
+    $used_mappings = array();
+    $nids = array();
+    foreach ($results as $result) {
+      $nids[] = $result->nid;
+    }
+    $nodes = node_load_multiple($nids);
+    foreach ($nodes as $node) {
+      if (!in_array($node->gathercontent_mapping_id, $used_mappings)) {
+        $used_mappings[] = $node->gathercontent_mapping_id;
+      }
+    }
+
+    $selected_projects = array();
+    $contents = array();
+    $content_obj = new \GatherContent\Content();
+    $mappings = entity_load('gathercontent_mapping', $used_mappings);
+    foreach ($mappings as $mapping) {
+      if (!in_array($mapping->gathercontent_project_id, $selected_projects)) {
+        $selected_projects[] = $mapping->gathercontent_project_id;
+        $content = $content_obj->getContents($mapping->gathercontent_project_id);
+        foreach ($content as $c) {
+          $single_content = array();
+          $single_content['gathercontent_updated'] = $c->updated_at;
+          $single_content['status'] = $c->status;
+          $single_content['name'] = $c->name;
+          $contents[$c->id] = $single_content;
+        }
+      }
+    }
+
+    $view->field['gathercontent_status']->contents = $contents;
+  }
+
+  if ($view->name == 'mapping') {
+    $project_obj = new Project();
+    $projects = $project_obj->getProjectObjects();
+    $temp_obj = new Template();
+    $templates = array();
+    foreach ($projects as $project) {
+      $remote_templates = $temp_obj->getTemplatesObject($project->id);
+      foreach ($remote_templates as $remote_template) {
+        $templates[$remote_template->id]['updated_at'] = $remote_template->updated_at;
+      }
+    }
+    $view->field['gathercontent_updated']->templates = $templates;
+  }
+}
+
+/**
+ * Implements hook_views_bulk_operations_form_alter().
+ *
+ * Alter VBO confirm form for gathercontent_update action and replace submit callback,
+ * so we can use custom batch.
+ */
+function gathercontent_views_bulk_operations_form_alter(&$form, &$form_state, $vbo) {
+  if ($form_state['step'] === 'views_bulk_operations_confirm_form') {
+    switch ($form_state['operation']->operationId) {
+      case 'action::gathercontent_update':
+        $array = array(implode('+', array_filter($form_state['values']['views_bulk_operations'])));
+        $view = views_get_view('update');
+        $view->set_display("block_1");
+        $view->set_arguments($array);
+        $view->preview();
+        $content = $view->render();
+        $form['description']['#markup'] = '<p>' . t('Please review your selection before updating.') . '</p>' . $content;
+        $form['#vbo_confirm_form_title'] = format_plural(count(array_filter($form_state['values']['views_bulk_operations'])),
+          'Confirm update selection (@count item)',
+          'Confirm update selection (@count items)');
+        $form['node_update_method'] = [
+          '#type' => 'radios',
+          '#required' => TRUE,
+          '#title' => t('Content update method'),
+          '#default_value' => variable_get('gathercontent_node_update_method', 'always_update'),
+          '#options' => [
+            'always_create' => t('Always create new Content'),
+            'update_if_not_changed' => t('Create new Content if it has changed since the last import'),
+            'always_update' => t('Always update existing Content'),
+          ],
+        ];
+        $form['actions']['submit']['#submit'] = array('gathercontent_views_vbo_update');
+        break;
+
+      case 'action::gathercontent_upload':
+        $array = array(implode('+', array_filter($form_state['values']['views_bulk_operations'])));
+        $view = views_get_view('update');
+        $view->set_display("block_1");
+        $view->set_arguments($array);
+        $view->preview();
+        $content = $view->render();
+        $form['description']['#markup'] = '<p>' . t('Please review your selection before upload.') . '</p>' . $content;
+        $form['#vbo_confirm_form_title'] = format_plural(count(array_filter($form_state['values']['views_bulk_operations'])),
+          'Confirm upload selection (@count item)',
+          'Confirm upload selection (@count items)');
+
+        $form['actions']['submit']['#submit'] = array('gathercontent_views_vbo_upload');
+        break;
+    }
+  }
+}
+
+/**
+ * Submit callback for `views_bulk_operations_confirm_form`.
+ *
+ * This callback is used for `gathercontent_update` action and it is substitution for VBO
+ * in order to redirect to custom view after operation is completed.
+ *
+ * @inheritdoc
+ */
+function gathercontent_views_vbo_update($form, &$form_state) {
+
+  $uuid = _gathercontent_uuid_generate();
+
+  $operation = entity_create('gathercontent_operation', array(
+    'uuid' => $uuid,
+    'type' => 'update',
+  ));
+  entity_save('gathercontent_operation', $operation);
+
+  $operations = array();
+
+  $nodes = node_load_multiple($form_state['selection']);
+  foreach ($nodes as $node) {
+    $operations[] = array(
+      'gathercontent_update_process',
+      array($node, $uuid, $form_state['values']['node_update_method']),
+    );
+  }
+
+  $batch = array(
+    'title' => t('Updating content ...'),
+    'operations' => $operations,
+    'finished' => 'gathercontent_update_finished',
+    'init_message' => t('Update is starting ...'),
+    'progress_message' => t('Processed @current out of @total.'),
+    'error_message' => t('An error occurred during processing'),
+  );
+
+  batch_set($batch);
+}
+
+/**
+ * Batch operation callback.
+ *
+ * We are doing real update thing here.
+ *
+ * @param object $node
+ *   Object of content we want to update.
+ * @param string $uuid
+ *   UUID of operation.
+ * @param string $node_update_method
+ *   Name of the node update method.
+ * @param array $context
+ *   Context of operation.
+ */
+function gathercontent_update_process($node, $uuid, $node_update_method, &$context) {
+  _gathercontent_fetcher($node->gathercontent_id, $uuid, 0, NULL, $node, NULL,  $node_update_method);
+  $context['results']['uuid'] = $uuid;
+}
+
+/**
+ * Finished callback.
+ *
+ * @inheritdoc
+ */
+function gathercontent_update_finished($success, $results, $operations) {
+  if ($success) {
+    // Select all items with uuid.
+    $query = new EntityFieldQuery();
+    $result = $query->entityCondition('entity_type', 'gathercontent_operation_item')
+      ->propertyCondition('operation_uuid', $results['uuid'])
+      ->execute();
+    if (isset($result['gathercontent_operation_item'])) {
+      $operation_items = entity_load('gathercontent_operation_item', array_keys($result['gathercontent_operation_item']));
+      $success_counter = 0;
+      $nids = array('success' => array(), 'failed' => array());
+      foreach ($operation_items as $operation_item) {
+        if ($operation_item->status === 'Success') {
+          $success_counter++;
+          $nids['success'][] = array(
+            'nid' => $operation_item->nid,
+            'gathercontent_id' => $operation_item->gathercontent_id,
+          );
+        }
+        else {
+          $nids['failed'][] = array(
+            'nid' => $operation_item->nid,
+            'gathercontent_id' => $operation_item->gathercontent_id,
+          );
+        }
+      }
+      $unsuccessful = count($result['gathercontent_operation_item']) - $success_counter;
+      drupal_set_message(format_plural($success_counter, '1 item was updated successfully.', '@count items were updated successfully.'));
+      if ($unsuccessful > 0) {
+        drupal_set_message(format_plural($unsuccessful, '1 item was not updated. Check errors below.', '@count items were not updated. Check errors below.'), 'error');
+      }
+      module_invoke_all('gathercontent_post_import',$nids['success'], $nids['failed'], $results['uuid']);
+    }
+    drupal_goto('admin/content/update/result/' . $results['uuid']);
+  }
+  else {
+    $error_operation = reset($operations);
+    drupal_set_message(
+      t('An error occurred while processing @operation with arguments : @args',
+        array(
+          '@operation' => $error_operation[0],
+          '@args' => print_r($error_operation[0], TRUE),
+        )
+      ),
+      'error'
+    );
+  }
+}
+
+/**
+ * @TODO: function comment!!!
+ */
+function gathercontent_views_vbo_upload($form, &$form_state) {
+  $uuid = _gathercontent_uuid_generate();
+
+  $operation = entity_create('gathercontent_operation', array(
+    'uuid' => $uuid,
+    'type' => 'upload',
+  ));
+  entity_save('gathercontent_operation', $operation);
+
+  $operations = array();
+  $nodes = node_load_multiple($form_state['selection']);
+  foreach ($nodes as $node) {
+    $operations[] = array(
+      'gathercontent_upload_process',
+      array($node, $uuid),
+    );
+  }
+
+  $batch = array(
+    'title' => t('Uploading content ...'),
+    'operations' => $operations,
+    'finished' => 'gathercontent_upload_finished',
+    'init_message' => t('Upload is starting ...'),
+    'progress_message' => t('Processed @current out of @total.'),
+    'error_message' => t('An error occurred during processing'),
+  );
+
+  batch_set($batch);
+}
+
+/**
+ * Batch operation callback.
+ *
+ * We are doing upload operation here.
+ *
+ * @param object $node
+ *   Object of content we want to upload.
+ */
+function gathercontent_upload_process($entity, $uuid, &$context) {
+  // 1. Load template from remote
+  // 2. Compare local and remote template
+  // 3. If templates are same, load node from remote.
+  // 4. Set values based on mapping.
+  $mapping = entity_load('gathercontent_mapping', array($entity->gathercontent_mapping_id));
+  $mapping = reset($mapping);
+
+  $tmp_obj = new GatherContent\Template();
+  $remote_template = $tmp_obj->getTemplate($mapping->gathercontent_template_id);
+
+  $cont_obj = new GatherContent\Content();
+  $remote_node = $cont_obj->getContent($entity->gathercontent_id);
+  $config = $remote_node->config;
+  $mapping_data = unserialize($mapping->data);
+
+  $operation_item = entity_create('gathercontent_operation_item', array(
+    'operation_uuid' => $uuid,
+    'item_status' => $remote_node->status->data->name,
+    'item_status_color' => $remote_node->status->data->color,
+    'template_name' => $remote_template->name,
+    'item_name' => $remote_node->name,
+    'gathercontent_id' => $entity->gathercontent_id,
+    'nid' => $entity->nid,
+  ));
+
+  if ($remote_template->config == unserialize($mapping->template)->config) {
+    $node = entity_metadata_wrapper('node', $entity);
+    try {
+      foreach ($config as &$pane) {
+        $is_translatable = module_exists('entity_translation')
+          && entity_translation_node_supported_type($mapping->content_type)
+          && ($mapping_data[$pane->name]['language'] != LANGUAGE_NONE);
+        if ($is_translatable) {
+          $language = $mapping_data[$pane->name]['language'];
+        }
+        else {
+          $language = LANGUAGE_NONE;
+        }
+        foreach ($pane->elements as &$field) {
+          if (isset($mapping_data[$pane->name]['elements'][$field->name])
+            && !empty($mapping_data[$pane->name]['elements'][$field->name])
+          ) {
+            $local_field_name = $mapping_data[$pane->name]['elements'][$field->name];
+            if ($mapping_data[$pane->name]['type'] === 'content') {
+              $field_info = field_info_field($local_field_name);
+              $is_translatable = $is_translatable && $field_info['translatable'];
+              switch ($field->type) {
+                case 'files':
+                  // There is currently no API for manipulating with files.
+                  break;
+
+                case 'choice_radio':
+                  $option_names = array();
+                  foreach ($field->options as &$option) {
+                    // Set selected to false for each option.
+                    $option->selected = FALSE;
+                    $option_names[] = $option->name;
+                  }
+
+                  // Fetch local selected option.
+                  if ($is_translatable) {
+                    $selected = $node->language($language)->$local_field_name->value();
+                  }
+                  else {
+                    $selected = $node->$local_field_name->value();
+                  }
+
+                  if (!in_array($selected, $option_names)) {
+                    // If it's other, then find that option in remote.
+                    foreach ($field->options as &$option) {
+                      if (isset($option->value)) {
+                        $option->selected = TRUE;
+                        $option->value = $selected;
+                      }
+                    }
+                  }
+                  else {
+                    // If it's checkbox, find it by remote option name,
+                    // which should be same.
+                    foreach ($field->options as &$option) {
+                      if ($option->name == $selected) {
+                        $option->selected = TRUE;
+                      }
+                    }
+                  }
+                  break;
+
+                case 'choice_checkbox':
+                  foreach ($field->options as &$option) {
+                    // Set selected to false for each option.
+                    $option->selected = FALSE;
+                  }
+
+                  // Fetch local selected option.
+                  if ($is_translatable) {
+                    $selected = $node->language($language)->$local_field_name->value();
+                  }
+                  else {
+                    $selected = $node->$local_field_name->value();
+                  }
+
+                  // If it's checkbox, find it by remote option name,
+                  // which should be same.
+                  foreach ($field->options as &$option) {
+                    if (isset($selected[$option->name])) {
+                      $option->selected = TRUE;
+                    }
+                  }
+                  break;
+
+                case 'section':
+                  // We don't upload this because this field shouldn't be
+                  // edited.
+                  break;
+
+                default:
+                  if ($local_field_name === 'title') {
+                    $field->value = $node->title->value();
+                  }
+                  else {
+                    if ($is_translatable) {
+                      if (module_exists('title') && title_field_replacement_enabled('node', $mapping->content_type, 'title')
+                        && title_field_replacement_info('node', 'title')['field']['field_name'] === $local_field_name
+                      ) {
+                        $field->value = $node->language($language)->{$local_field_name}->value();
+                      }
+                      else {
+                        $field->value = $node->language($language)->{$local_field_name}->value->value();
+                      }
+                    }
+                    else {
+                      $field->value = $node->{$local_field_name}->value->value();
+                    }
+                  }
+                  break;
+              }
+
+            }
+            elseif ($mapping_data[$pane->name]['type'] === 'metatag') {
+              if (module_exists('metatag') && metatag_entity_supports_metatags('node', $mapping->content_type)) {
+                if ($is_translatable) {
+                  $field->value = $node->language($language)->metatags->{$local_field_name}->value();
+                }
+                else {
+                  $field->value = $node->metatags->{$local_field_name}->value();
+                }
+              }
+              else {
+                throw new Exception("Metatag module not enabled or entity doesn't support 
+    metatags while trying to map values woth metatag content.");
+              }
+            }
+          }
+          else {
+            $operation_item->status = "System error, please contact you administrator.";
+            entity_save('gathercontent_operation_item', $operation_item);
+          }
+        }
+      }
+
+      drupal_alter('gathercontent_pre_node_upload', $entity, $config);
+
+      if ($cont_obj->postContent($entity->gathercontent_id, $config)) {
+        $operation_item->status = "Success";
+        entity_save('gathercontent_operation_item', $operation_item);
+      }
+      else {
+        $operation_item->status = 'Mapping doesn\'t match';
+        entity_save('gathercontent_operation_item', $operation_item);
+        module_invoke_all('gathercontent_post_node_upload', $entity, $config);
+      }
+
+    }
+    catch (\Exception $e) {
+      watchdog('gathercontent_import', print_r($e, TRUE), array(), WATCHDOG_ERROR);
+      $operation_item->status = 'Mapping doesn\'t match';
+      entity_save('gathercontent_operation_item', $operation_item);
+    }
+  }
+  else {
+    $operation_item->status = 'Mapping doesn\'t match';
+    entity_save('gathercontent_operation_item', $operation_item);
+  }
+
+  $context['results']['uuid'] = $uuid;
+}
+
+/**
+ * Finished callback.
+ *
+ * @inheritdoc
+ */
+function gathercontent_upload_finished($success, $results, $operations) {
+  if ($success) {
+    // Select all items with uuid.
+    $query = new EntityFieldQuery();
+    $result = $query->entityCondition('entity_type', 'gathercontent_operation_item')
+      ->propertyCondition('operation_uuid', $results['uuid'])
+      ->execute();
+    if (isset($result['gathercontent_operation_item'])) {
+      $operation_items = entity_load('gathercontent_operation_item', array_keys($result['gathercontent_operation_item']));
+      $success_counter = 0;
+      $nids = array('success' => array(), 'failed' => array());
+      foreach ($operation_items as $operation_item) {
+        if ($operation_item->status === 'Success') {
+          $success_counter++;
+          $nids['success'][] = array(
+            'nid' => $operation_item->nid,
+            'gathercontent_id' => $operation_item->gathercontent_id,
+          );
+        }
+        else {
+          $nids['failed'][] = array(
+            'nid' => $operation_item->nid,
+            'gathercontent_id' => $operation_item->gathercontent_id,
+          );
+        }
+      }
+      $unsuccessful = count($result['gathercontent_operation_item']) - $success_counter;
+      drupal_set_message(format_plural($success_counter, '1 item was uploaded successfully.', '@count items were uploaded successfully.'));
+      if ($unsuccessful > 0) {
+        drupal_set_message(format_plural($unsuccessful, '1 item was not uploaded. Check errors below.', '@count items were not uploaded. Check errors below.'), 'error');
+      }
+      module_invoke_all('gathercontent_post_upload',$nids['success'], $nids['failed'], $results['uuid']);
+    }
+    drupal_goto('admin/content/upload/result/' . $results['uuid']);
+  }
+  else {
+    $error_operation = reset($operations);
+    drupal_set_message(
+      t('An error occurred while processing @operation with arguments : @args',
+        array(
+          '@operation' => $error_operation[0],
+          '@args' => print_r($error_operation[0], TRUE),
+        )
+      ),
+      'error'
+    );
+  }
+}
+
+/**
+ * Implements hook_form_alter().
+ *
+ * We are adding some classes here.
+ */
+function gathercontent_form_alter(&$form, &$form_state, $form_id) {
+  switch ($form_id) {
+    case 'gathercontent_import_form_select':
+      $form['#attributes']['class'][] = 'form-select-import';
+      break;
+
+    case 'gathercontent_mapping_edit_form':
+      $form['#attributes']['class'][] = 'form-gathercontent-mapping';
+      break;
+  }
+}
+
+/**
+ * Implements hook_libraries_info().
+ */
+function gathercontent_libraries_info() {
+  $libraries['tablesorter-mottie'] = array(
+    'name' => "Mottie's tablesorter",
+    'vendor url' => 'https://github.com/Mottie/tablesorter',
+    'download url' => 'https://github.com/Mottie/tablesorter/archive/master.zip',
+    'version callback' => '_gathercontent_tablesorter_mottie_version',
+    'files' => array(
+      'js' => array('dist/js/jquery.tablesorter.min.js'),
+    ),
+  );
+
+  return $libraries;
+}
+
+/**
+ * Custom version callback for tablesorter jquery plugin library.
+ *
+ * @return string
+ *   Version of the installed jquery.tablesorter plugin.
+ */
+function _gathercontent_tablesorter_mottie_version() {
+  $lib_version = FALSE;
+  $lib_path = libraries_get_path('tablesorter-mottie');
+  $lib_packages_json = file_get_contents($lib_path . '/package.json');
+
+  if ($lib_packages_json !== FALSE) {
+    $lib_packages_info = json_decode($lib_packages_json, TRUE);
+
+    if (is_array($lib_packages_info) && isset($lib_packages_info['version'])) {
+      $lib_version = $lib_packages_info['version'];
+    }
+  }
+
+  return $lib_version;
+}
+
+/**
+ * UUID Generator.
+ *
+ * @see http://php.net/manual/en/function.uniqid.php#94959
+ *
+ * @return string
+ *   UUID.
+ */
+function _gathercontent_uuid_generate() {
+  return sprintf('%04x%04x-%04x-%04x-%04x-%04x%04x%04x',
+    // 32 bits for "time_low".
+    mt_rand(0, 0xffff), mt_rand(0, 0xffff),
+
+    // 16 bits for "time_mid".
+    mt_rand(0, 0xffff),
+
+    // 16 bits for "time_hi_and_version",
+    // four most significant bits holds version number 4.
+    mt_rand(0, 0x0fff) | 0x4000,
+
+    // 16 bits, 8 bits for "clk_seq_hi_res",
+    // 8 bits for "clk_seq_low",
+    // two most significant bits holds zero and one for variant DCE1.1.
+    mt_rand(0, 0x3fff) | 0x8000,
+
+    // 48 bits for "node".
+    mt_rand(0, 0xffff), mt_rand(0, 0xffff), mt_rand(0, 0xffff)
+  );
+}
+
+/**
+ * Implements template_preprocess_views_view_table().
+ */
+function gathercontent_preprocess_views_view_table(&$variables) {
+  $view = $variables['view'];
+  switch ("{$view->name}:{$view->current_display}:{$view->plugin_name}") {
+    case 'update:page:table':
+    case 'update:page_1:table':
+      // Libraries module and tablesorter plugin are optional.
+      // If tablesorter available, add it to the scope.
+      if (module_exists('libraries')) {
+        $library = libraries_detect('tablesorter-mottie');
+        if ($library['installed']) {
+          $gathercontent_module_path = drupal_get_path('module', 'gathercontent');
+          $variables['classes_array'][] = 'tablesorter-enabled';
+          drupal_add_js($gathercontent_module_path . '/js/gathercontent-tablesorter.js');
+          drupal_add_js(array(
+            'gathercontent' => array(
+              'tablesorterOptionOverrides' => array(
+                'headers' => array(
+                  '0' => array(
+                    'sorter' => FALSE,
+                  ),
+                  '9' => array(
+                    'sorter' => FALSE,
+                  ),
+                  '10' => array(
+                    'sorter' => FALSE,
+                  ),
+                ),
+              ),
+            ),
+          ), 'setting');
+          libraries_load('tablesorter-mottie');
+        }
+      }
+      break;
+
+    case 'import_result_page:page:table':
+    case 'import_result_page:page_1:table':
+    case 'import_result_page:page_2:table':
+      // Libraries module and tablesorter plugin are optional.
+      // If tablesorter available, add it to the scope.
+      if (module_exists('libraries')) {
+        $library = libraries_detect('tablesorter-mottie');
+        if ($library['installed']) {
+          $gathercontent_module_path = drupal_get_path('module', 'gathercontent');
+          $variables['classes_array'][] = 'tablesorter-enabled';
+          drupal_add_js($gathercontent_module_path . '/js/gathercontent-tablesorter.js');
+          drupal_add_js(array(
+            'gathercontent' => array(
+              'tablesorterOptionOverrides' => array(
+                'headers' => array(
+                  '4' => array(
+                    'sorter' => FALSE,
+                  ),
+                  '5' => array(
+                    'sorter' => FALSE,
+                  ),
+                ),
+              ),
+            ),
+          ), 'setting');
+          libraries_load('tablesorter-mottie');
+        }
+      }
+      break;
+  }
+}

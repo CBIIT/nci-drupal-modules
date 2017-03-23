@@ -1,4 +1,5 @@
 <?php
+
 /**
  * @file
  * This file contains no working PHP code; it exists to provide documentation
@@ -232,7 +233,7 @@ function hook_js_callback_filter_xss_alter(array &$allowed_tags = array()) {
  * @see js_callback_process_request()
  * @see js_http_response()
  */
-function MODULE_js_callback_CALLBACK($args, $data) {
+function MODULE_js_callback_CALLBACK($args, array $data) {
   $json = array();
   $json['content'] = '<p>My content</p>';
   return $json;
