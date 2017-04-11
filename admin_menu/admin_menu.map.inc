@@ -80,12 +80,7 @@ function field_ui_admin_menu_map() {
         'access callback' => 'user_access',
         'access arguments' => array('administer site configuration'),
       );
-      $access_arguments = $bundle_info['admin']['access arguments'];
-      if (isset($bundle_info['admin']['real path'])) {
-        $menu_item = menu_get_item($bundle_info['admin']['real path']);
-        $access_arguments = menu_unserialize(serialize($access_arguments), $menu_item['map']);
-      }
-      if (!call_user_func_array($bundle_info['admin']['access callback'], $access_arguments)) {
+      if (!call_user_func_array($bundle_info['admin']['access callback'], $bundle_info['admin']['access arguments'])) {
         continue;
       }
 

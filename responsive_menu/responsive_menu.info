@@ -1,0 +1,14 @@
+name = Responsive menu
+description = Provides a javascript based off-canvas responsive menu with depth. At wider browser widths it provides a horizontal menu capable of drop downs and flyouts.
+core = 7.x
+configure = admin/structure/menu/settings
+package = Other
+dependencies[] = libraries
+dependencies[] = jquery_update
+
+; Information added by Drupal.org packaging script on 2016-12-10
+version = "7.x-2.6"
+core = "7.x"
+project = "responsive_menu"
+datestamp = "1481361487"
+

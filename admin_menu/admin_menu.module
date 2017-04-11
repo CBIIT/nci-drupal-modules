@@ -795,8 +795,8 @@ function admin_menu_flush_caches($uid = NULL) {
   cache_clear_all($cid, 'cache_menu', TRUE);
   // Flush client-side cache hashes.
   drupal_static_reset('admin_menu_cache_get');
-  // If cache_admin_menu is not empty, flush it.
-  if (!cache_is_empty('cache_admin_menu')) {
+  // db_table_exists() required for SimpleTest.
+  if (db_table_exists('cache_admin_menu')) {
     cache_clear_all(isset($uid) ? $cid : '*', 'cache_admin_menu', TRUE);
   }
 }

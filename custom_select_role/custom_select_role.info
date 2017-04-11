@@ -1,0 +1,4 @@
+name = Custom Role Form
+description = Select default role in node service form
+core = 7.x
+package = Custom
