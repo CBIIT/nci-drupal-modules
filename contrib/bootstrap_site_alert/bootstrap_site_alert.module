@@ -1,0 +1,90 @@
+<?php
+
+/**
+ * @file
+ * The bootstrap_site_alert module file.
+ */
+
+/**
+ * Implements hook_permission().
+ */
+function bootstrap_site_alert_permission() {
+  return array(
+    'administer bootstrap site alerts' => array(
+      'title' => t('Administer Bootstrap Site Alert'),
+      'description' => t('Administer Bootstrap Site Alert'),
+    ),
+    'view bootstrap site alerts' => array(
+      'title' => t('View Bootstrap Site Alert'),
+      'description' => t('View Bootstrap Site Alert'),
+    ),
+  );
+}
+
+/**
+ * Implements hook_menu().
+ */
+function bootstrap_site_alert_menu() {
+  $items = array();
+  $items['admin/config/system/bootstrap-site-alert'] = array(
+    'title' => 'Bootstrap Site Alert Configuration',
+    'description' => 'Configure the Bootstrap Site Wide Alert Settings',
+    'type' => MENU_NORMAL_ITEM,
+    'page callback' => 'drupal_get_form',
+    'page arguments' => array('bootstrap_site_alert_admin'),
+    'access arguments' => array('administer bootstrap site alerts'),
+    'file' => 'includes/bootstrap_site_alert.admin.inc',
+  );
+  return $items;
+}
+
+/**
+ * Implements hook_page_alter().
+ */
+function bootstrap_site_alert_page_alter(&$page) {
+  // If active this is set.
+  if (variable_get('bootstrap_site_alert_active', FALSE) && user_access('view bootstrap site alerts')) {
+
+    // Get variables.
+    $level = variable_get('bootstrap_site_alert_severity', NULL);
+    $message = variable_get('bootstrap_site_alert_message', array('value' => '', 'format' => NULL));
+
+    // Start building the element.
+    $alert = '<div class="alert bs-site-alert ' . $level . '" role="alert"';
+
+    // Special handling for dismissable alerts.
+     if (variable_get('bootstrap_site_alert_dismiss', FALSE)) {
+
+      // Load some JS for toggling visible state based on cookie value. If
+      // dismiss is triggered, the alert will be hidden for the session
+      // duration.
+      $page['content']['#attached']['library'][] = array('system', 'jquery.cookie');
+      $page['content']['#attached']['js'][] = array(
+        'type'=>'file',
+        'data' => drupal_get_path('module', 'bootstrap_site_alert') . '/js/bootstrap-site-alert.js',
+      );
+
+      // A random key is generated whenever an alert has changed.
+      // Make this key accessible via JavaScript.
+      drupal_add_js(array('bootstrap_site_alert' => array('key' => variable_get('bootstrap_site_alert_key', '123'))), array('type' => 'setting'));
+
+      // Add 'display:none' to the alert element. This prevents it from
+      // momentarily flickering onscreen before we have a chance to hide it.
+      $alert .= ' style="display:none;">';
+
+      // Add close button.
+       $alert .= '<button type="button" class="close" data-dismiss="alert" aria-hidden="true">&times;</button>';
+     }
+    else {
+      $alert .= '>';
+    }
+
+    $alert .= $message['value'];
+    $alert .= '</div>';
+
+    $page['page_top']['bootstrap_site_alert'] = array(
+      '#markup' => $alert,
+      '#weight' => 1000,
+    );
+  }
+}

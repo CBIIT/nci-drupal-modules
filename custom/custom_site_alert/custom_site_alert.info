@@ -1,0 +1,4 @@
+name = Custom Site Alert Form
+description = Alter Site Alert Form
+core = 7.x
+package = Custom

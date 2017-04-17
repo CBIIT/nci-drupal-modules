@@ -1,0 +1,13 @@
+<?php
+
+/**
+ * @file
+ * Install, update, and uninstall functions for Site Alert.
+ */
+
+/**
+ * Empty update function to trigger cache clear.
+ */
+function site_alert_update_7000() {
+  // Do nothing.
+}

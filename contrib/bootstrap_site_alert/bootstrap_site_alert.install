@@ -1,0 +1,42 @@
+<?php
+
+/**
+ * @file
+ * The bootstrap_site_alert install file.
+ */
+
+/**
+ * Implements hook_install().
+ */
+function bootstrap_site_alert_install() {
+  // Add default permissions for viewing.
+  user_role_grant_permissions(DRUPAL_ANONYMOUS_RID, array('view bootstrap site alerts'));
+  user_role_grant_permissions(DRUPAL_AUTHENTICATED_RID, array('view bootstrap site alerts'));
+}
+
+/**
+ * Implements hook_uninstall().
+ */
+function bootstrap_site_alert_uninstall() {
+  // Remove all variable on uninstall
+  variable_del('bootstrap_site_alert_active');
+  variable_del('bootstrap_site_alert_severity');
+  variable_del('bootstrap_site_alert_message');
+  variable_del('bootstrap_site_alert_dismiss');
+  variable_del('bootstrap_site_alert_key');
+}
+
+/**
+ * Add in Default Permissions for Viewing the Site Alert.
+ */
+function bootstrap_site_alert_update_7101() {
+  user_role_grant_permissions(DRUPAL_ANONYMOUS_RID, array('view bootstrap site alerts'));
+  user_role_grant_permissions(DRUPAL_AUTHENTICATED_RID, array('view bootstrap site alerts'));
+}
+
+/**
+ * Flush all caches for good measure due to menu and file restructuring.
+ */
+function bootstrap_site_alert_update_7102() {
+  drupal_flush_all_caches();
+}

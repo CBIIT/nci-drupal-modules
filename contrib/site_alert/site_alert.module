@@ -1,0 +1,224 @@
+<?php
+
+/**
+ * Core functionality for the Site Alert module.
+ *
+ * @file site_alert.module
+ */
+
+define('SITE_ALERT_TIMEOUT_DEFAULT', 300);
+
+/**
+ * Implements hook_ctools_plugin_directory().
+ */
+function site_alert_ctools_plugin_directory($owner, $plugin_type) {
+  if ($owner == 'ctools' && ($plugin_type == 'content_types')) {
+    return 'plugins/' . $plugin_type;
+  }
+}
+
+/**
+ * Implements hook_theme().
+ */
+function site_alert_theme() {
+  return array(
+    'site_alert' => array(
+      'variables' => array(
+        'level' => NULL,
+        'alert' => NULL
+      ),
+      'template' => 'templates/site-alert',
+    ),
+    'site_alert_wrapper' => array(
+      'variables' => array(),
+      'template' => 'templates/site-alert-wrapper',
+    ),
+  );
+}
+
+/**
+ * Preprocess variables for site-alert.tpl.php.
+ */
+function template_preprocess_site_alert(&$variables) {
+  $variables['alert'] = filter_xss($variables['alert'], array('a', 'em', 'strong'));
+}
+
+/**
+ * Build the administration form.
+ *
+ * This form collects the following values
+ * and stores them in the vars table.
+ *
+ * @toggle - whether or not an alert is active
+ * @severity - Severity of the alert (low or high)
+ * @title - The title of the Alert (usually "Alert")
+ * @content - Content to display on the homepage
+ * @node - The associated Alert Node. The Read More link on the homepage will link to this node
+ */
+function site_alert_admin() {
+  $form = array();
+
+  $form['site_alert_description'] = array(
+    '#value' => '<p>Use this page to set an Alert. If the "Turn On Alert" checkbox is checked, a blue or red banner (depending on the Alert Severity) will be displayed on the homepage containing the copy defined here.',
+  );
+
+  $date = time();
+  $format = 'm-d-Y h:iA';
+
+  $form['site_alert_start'] = array(
+    '#type' => 'date_popup',
+    '#title' => t('Start date for Alert (Default is now)'),
+    '#date_format' => $format,
+    '#date_label_position' => 'within',
+    '#date_increment' => 15,
+    '#date_year_range' => '-1:+1',
+    '#default_value' => variable_get('site_alert_start', $date),
+    '#date_timezone' => variable_get('date_default_timezone', 0),
+  );
+
+  $form['site_alert_expire'] = array(
+    '#type' => 'date_popup',
+    '#title' => t('Expiration date for Alert'),
+    '#date_format' => $format,
+    '#date_label_position' => 'within',
+    '#date_increment' => 15,
+    '#date_year_range' => '-1:+1',
+    '#default_value' => variable_get('site_alert_expire', $date),
+    '#date_timezone' => variable_get('date_default_timezone', 0),
+    '#required' => TRUE,
+    '#suffix' => '<div class="site-alert-date-info">' . '<em>' . t("Dates are stored in the site's default timezone, currently %tz", array('%tz' => variable_get('date_default_timezone'))) . '</em></div>',
+  );
+
+  $form['site_alert_severity'] = array(
+    '#type' => 'select',
+    '#title' => 'Severity',
+    '#options' => array(
+      'info' => t('Informational Only - Default Blue'),
+      'low' => t('Low Severity - Default Yellow'),
+      'high' => t('High Severity - Default Red'),
+    ),
+    '#default_value' => variable_get('site_alert_severity', 'low'),
+    '#required' => TRUE,
+  );
+
+  $form['site_alert_timeout'] = array(
+    '#type' => 'select',
+    '#title' => t('Timeout'),
+    '#options' => array(
+      60 => t('1 minute'),
+      120 => t('2 minutes'),
+      300 => t('5 minutes'),
+      600 => t('10 minutes'),
+      900 => t('15 minutes'),
+      1200 => t('20 minutes'),
+      1800 => t('30 minutes'),
+      3600 => t('1 hour'),
+    ),
+    '#default_value' => variable_get('site_alert_timeout', SITE_ALERT_TIMEOUT_DEFAULT),
+    '#description' => t('Configure how frequently the alert is updated in the user\'s browser.'),
+  );
+
+  $alert = variable_get('site_alert_content');
+
+  $form['site_alert_content'] = array(
+    '#type' => 'textarea',
+    '#description' => t('Allowed tags are a, strong, and em'),
+    '#title' => 'Content',
+    '#default_value' => $alert,
+   '#required' => TRUE,
+    '#rows' => 2,
+  );
+
+  return system_settings_form($form, FALSE);
+}
+
+/**
+ * Create the page for and link to the form.
+ */
+function site_alert_menu() {
+
+  $items = array();
+
+  $items['admin/config/system/alerts'] = array(
+    'title' => 'Site Alert Settings',
+    'description' => 'Toggle alerts on/off and configure the title and contents',
+    'page callback' => 'drupal_get_form',
+    'page arguments' => array('site_alert_admin'),
+    'access arguments' => array('administer alerts settings'),
+    'type' => MENU_NORMAL_ITEM,
+  );
+
+  $items['ajax/site_alert'] = array(
+    'title' => 'Site Alert',
+    'page callback' => 'site_alert_get_alert',
+    'type' => MENU_CALLBACK,
+    'access callback' => TRUE,
+    'theme callback' => 'ajax_base_page_theme',
+  );
+
+  return $items;
+}
+
+/**
+ * Create a new permission to administer Site Alerts.
+ *
+ * This permission can be given to any role.
+ */
+function site_alert_permission() {
+
+  return array(
+    'administer alerts settings' => array(
+      'title' => t('Administer alerts settings'),
+      'description' => t('Allow users to administer alerts settings'),
+    ),
+  );
+}
+
+/**
+ * Callback to get site alert information.
+ */
+function site_alert_get_alert() {
+  $start = variable_get('site_alert_start');
+  $begin = strtotime($start);
+  $alert = variable_get('site_alert_expire');
+  $expire = strtotime($alert);
+
+  $level = variable_get('site_alert_severity');
+  $alert = variable_get('site_alert_content');
+
+  if ($begin < time()) {
+    if ($expire > time()) {
+      $output = array(
+        '#theme' => 'site_alert',
+        '#level' => $level,
+        '#alert' => $alert,
+      );
+      print render($output);
+      drupal_exit();
+    }
+  }
+}
+
+/**
+ * Implements hook_block_info().
+ */
+function site_alert_block_info() {
+  $blocks = array();
+  $blocks['site_alert'] = array(
+    // The name that will appear in the block list.
+    'info' => t('Site Alert Block'),
+  );
+  return $blocks;
+}
+
+/**
+ * Implements hook_block_view().
+ */
+function site_alert_block_view() {
+
+  drupal_add_js(drupal_get_path('module', 'site_alert') . '/site_alert.js');
+  drupal_add_js(array('siteAlert' => array('timeout' =>  variable_get('site_alert_timeout', SITE_ALERT_TIMEOUT_DEFAULT))), 'setting');
+
+  $block = array('content' => array('#theme' => 'site_alert_wrapper'));
+  return $block;
+}
