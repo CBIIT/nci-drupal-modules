@@ -1,0 +1,7 @@
+name = Workbench moderation default state
+description = Provides default state per roles for workbench moderation
+core = 7.x
+package = lu
+dependencies[] = "ctools"
+dependencies[] = "workbench_moderation"
+
