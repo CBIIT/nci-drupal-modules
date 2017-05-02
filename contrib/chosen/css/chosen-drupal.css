@@ -17,7 +17,7 @@
 }
 
 .chosen-container {
-  display: inline-block;
+  display: inline-block !important;
 }
 .container-inline div.chosen-container div {
   display: block;

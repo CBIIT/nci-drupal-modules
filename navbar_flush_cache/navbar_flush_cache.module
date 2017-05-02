@@ -1,0 +1,133 @@
+<?php
+
+/**
+ * @file
+ * Code for the Navbar Flush Cache module.
+ */
+
+/**
+ * Flush cache base path.
+ */
+define('NAVBAR_FLUSH_CACHE_BASE_PATH', 'navbar_flush_cache/flush-cache');
+
+/**
+ * Load menu builder functions.
+ */
+module_load_include('inc', 'navbar_flush_cache');
+
+/**
+ * Implements hook_permission().
+ */
+function navbar_flush_cache_permission() {
+  return array(
+    'flush caches' => array(
+      'title' => t('Flush caches'),
+      'description' => t('Access links to flush caches in navbar.'),
+    ),
+  );
+}
+
+/**
+ * Implements hook_menu().
+ */
+function navbar_flush_cache_menu() {
+  $items[NAVBAR_FLUSH_CACHE_BASE_PATH] = array(
+    'page callback' => 'navbar_flush_cache_page',
+    'access arguments' => array('flush caches'),
+    'file' => 'navbar_flush_cache.pages.inc',
+    'type' => MENU_CALLBACK,
+  );
+
+  return $items;
+}
+
+/**
+ * Implements hook_navbar().
+ */
+function navbar_flush_cache_navbar() {
+  $items = array();
+
+  $path = drupal_get_path('module', 'navbar_flush_cache');
+
+  // Render all links before passing them through to theme_item_list() as it
+  // doesn't render children elements.
+  $links = navbar_flush_cache_links();
+  foreach ($links as &$link) {
+    $link = drupal_render($link);
+  }
+
+  $items['navbar_flush_cache'] = array(
+    '#type' => 'navbar_item',
+    'tab' => array(
+      '#type' => 'link',
+      '#title' => t('Flush cache'),
+      '#href' => 'admin',
+      '#options' => array(
+        'attributes' => array(
+          'title' => t('Flush cache'),
+          'class' => array('navbar-icon', 'navbar-flush-cache-icon-trash'),
+        ),
+      ),
+    ),
+    'tray' => array(
+      '#heading' => t('Flush cache menu'),
+      'links' => array(
+        '#theme' => 'item_list',
+        '#items' => $links,
+        '#attributes' => array(
+          'class' => array('navbar-menu'),
+        ),
+      ),
+    ),
+    '#attached' => array(
+      'css' => array($path . '/css/navbar_flush_cache.icons.css'),
+    ),
+    '#weight' => -13,
+  );
+
+  return $items;
+}
+
+/**
+ * Generates the flush cache links.
+ *
+ * @return array
+ *   An array of renderable array links.
+ */
+function navbar_flush_cache_links() {
+  // The path to redirect the user to after the cache is cleared.
+  $destination = drupal_get_destination();
+
+  $links = array(
+    'all' =>  array(
+      '#type' => 'link',
+      '#title' => t('Flush all caches'),
+      '#href' => NAVBAR_FLUSH_CACHE_BASE_PATH,
+      '#options' => array(
+        'attributes' => array(
+          'title' => t('Flush all caches'),
+          'class' => array('navbar-menu-item'),
+        ),
+        'query' => $destination + array('token' => drupal_get_token(NAVBAR_FLUSH_CACHE_BASE_PATH)),
+      ),
+    ),
+  );
+
+  $caches = module_invoke_all('navbar_flush_cache_info');
+  foreach ($caches as $name => $cache) {
+    $links[$name] = array(
+      '#type' => 'link',
+      '#title' => $cache['title'],
+      '#href' => NAVBAR_FLUSH_CACHE_BASE_PATH . '/' . $name,
+      '#options' => array(
+        'attributes' => array(
+          'title' => $cache['title'],
+          'class' => array('navbar-menu-item'),
+        ),
+        'query' => $destination + array('token' => drupal_get_token(NAVBAR_FLUSH_CACHE_BASE_PATH . '/' . $name)),
+      ),
+    );
+  }
+
+  return $links;
+}

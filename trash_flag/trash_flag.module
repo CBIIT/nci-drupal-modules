@@ -1,0 +1,363 @@
+<?php
+/**
+ * @file
+ * Code for the Trash Flag feature.
+ */
+
+include_once 'trash_flag.features.inc';
+
+
+/**
+ * Implements hook_flag_flag().
+ */
+function trash_flag_flag_flag($flag, $content_id, $account, $flagging) {
+  trash_flag_trigger('flag', $flag, $content_id, $account);
+}
+
+/**
+ * Implements hook_flag_unflag().
+ */
+function trash_flag_flag_unflag($flag, $content_id, $account, $flagging) {
+  trash_flag_trigger('unflag', $flag, $content_id, $account);
+}
+
+/**
+ * Helper for flag and unflag hooks. Trigger actions if any are available.
+ */
+function trash_flag_trigger($action, $flag, $content_id, $account) {
+  if ($flag->name == 'trash') {
+    node_access_acquire_grants(node_load($content_id));
+  }
+}
+
+/**
+ * Implements hook_flag_access().
+ */
+function trash_flag_flag_access($flag, $content_id, $action, $account) {
+  // Do nothing if there is no restriction by authorship.
+  if ($flag->name == 'trash') {
+    // Node must exists to be trashed.
+    if (empty($content_id) || !($node = node_load($content_id))) {
+      return FALSE;
+    }
+    $op = $action == 'flag' ? 'trash' : 'untrash';
+    $type = $node->type;
+    $access = FALSE;
+    // Allow per group trash settings.
+    if (module_exists('og')) {
+      $access = og_user_access_entity('administer group', 'node', $node, $account);
+      // we don't actually use administer group permission, just use above check
+      // to see if node is part of group.
+      if (!is_null($access)) {
+        $access =
+          og_user_access_entity("$op any content", 'node', $node, $account) ||
+          og_user_access_entity("$op any $type content", 'node', $node, $account) ||
+          ($account->uid == $node->uid && og_user_access_entity("$op own $type content", 'node', $node, $account));
+      }
+      else {
+        $access = FALSE;
+      }
+    }
+    // Fallback to normal permission checks.
+    return $access ||
+          user_access("$op any content", $account) ||
+          user_access("$op any $type content", $account) ||
+          ($account->uid == $node->uid && user_access("$op own $type content", $account));
+  }
+}
+
+/**
+ * Future: Implements hook_flag_access().
+ *
+ * As soon as the new hook_flag_access_mulitpe() is thoroughly tested, we can
+ * get rid of duplicate code and use this instead.
+ */
+function _trash_flag_flag_access($flag, $content_id, $action, $account) {
+  $result = trash_flag_flag_access_multiple($flag, array($content_id => $action), $account);
+  return !empty($result[$content_id]);
+}
+
+/**
+ * Implements hook_flag_access_multiple().
+ *
+ * @param $flag
+ *   flag object
+ * @param $nid_actions
+ *   Array $nid => 'flag'|'unflag'
+ * @param $account
+ *   User account
+ * @return array
+ *   Array $nid => $access, (null or unset means "no opinion")
+ */
+function trash_flag_flag_access_multiple($flag, $nid_actions, $account) {
+  $access = array();
+
+  // Don't care for others.
+  if ($flag->name != 'trash') {
+    return $access;
+  }
+
+  $action_map = array('flag' => 'trash', 'unflag' => 'untrash');
+
+  // Global permisisons.
+  $allowed_actions = array();
+  foreach ($action_map as $action => $trash_action) {
+    if (user_access("$trash_action any content")) {
+      $allowed_actions[$action] = TRUE;
+    }
+  }
+  foreach ($nid_actions as $nid => $action) {
+    if (isset($allowed_actions[$action])) {
+      $access[$nid] = TRUE;
+      unset($nid_actions[$nid]);
+    }
+  }
+  // That's all? Return it.
+  if (empty($nid_actions)) {
+    return $access;
+  }
+
+  // Type specific permisisons.
+  // Get allowed nodetypes, then nids for that.
+  $trash_any_types = $trash_own_types = array();
+  foreach ($action_map as $action => $trash_action) {
+    foreach (node_type_get_names() as $type => $_) {
+      if (user_access("$trash_action any $type content", $account)) {
+        $trash_any_types[] = $type;
+      }
+      elseif (user_access("$trash_action own $type content", $account)) {
+        $trash_own_types[] = $type;
+      }
+    }
+  }
+  $fetched_nids = array();
+  if ($trash_any_types || $trash_own_types) {
+    $query = db_select('node', 'n')
+      ->fields('n', array('nid'))
+      ->condition('nid', array_keys($nid_actions), 'IN');
+    if ($trash_any_types && $trash_own_types) {
+      $or = db_or()
+        ->condition('type', $trash_any_types)
+        ->condition(db_and()
+          ->condition('type', $trash_own_types)
+          ->condition('uid', $account->uid)
+        );
+      $query->condition($or);
+    }
+    elseif ($trash_any_types) {
+      $query->condition('type', $trash_any_types);
+    }
+    else {
+      $query->condition('type', $trash_own_types);
+      $query->condition('uid', $account->uid);
+    }
+    $fetched_nids = $query->execute()->fetchCol();
+  }
+  foreach ($fetched_nids as $fetched_nid) {
+    $access[$fetched_nid] = TRUE;
+    unset($nid_actions[$fetched_nid]);
+  }
+  // That's all? Return it.
+  if (empty($nid_actions)) {
+    return $access;
+  }
+
+  // OG permissions. One after the other.
+  foreach ($nid_actions as $nid => $action) {
+    $trash_action = $action_map[$action];
+    // @see og_user_access_entity().
+    $node = entity_load_single('node', $nid);
+    list(,, $bundle_name) = entity_extract_ids('node', $node);
+    $is_group_content = og_is_group_content_type('node', $bundle_name);
+    if ($is_group_content && $groups = og_get_entity_groups('node', $node)) {
+      foreach ($groups as $group_type => $gids) {
+        foreach ($gids as $gid) {
+          if (og_user_access($group_type, $gid, "$trash_action any content", $account)
+              || og_user_access($group_type, $gid, "$trash_action any $bundle_name content", $account)
+              || ($account->uid == $node->uid && og_user_access_entity("$trash_action own $bundle_name content", 'node', $node, $account))
+        ) {
+            $access[$nid] = TRUE;
+          }
+        }
+      }
+    }
+  }
+
+  return $access;
+}
+
+/**
+ * Implements hook_permission().
+ */
+function trash_flag_permission() {
+  if ($flag = flag_get_flag('trash')) {
+    $trash_action = drupal_strtolower($flag->title);
+    $trashed = drupal_strtolower($flag->unflag_denied_text);
+    $untrash_action = drupal_strtolower($flag->unflag_short);
+  }
+  else {
+    $trash_action = 'trash';
+    $untrash_action = 'untrash';
+    $trashed = 'trashed';
+  }
+  $perms = array();
+  $t_args = array('@trash' => $trash_action, '@untrash' => $untrash_action, '@trashed' => $trashed);
+  $perms["trash any content"] = array(
+    'title' => t('@trash any content', $t_args),
+  );
+  $perms["untrash any content"] = array(
+    'title' => t('@untrash any content.', $t_args),
+    'description' => t('Must be able to view @trashed content to @untrash.', $t_args),
+  );
+  $perms["view trash content"] = array(
+    'title' => t('View @trashed content', $t_args),
+    'description' => t('Users with this permission will be able to view @trashed content as normal, unless the @trashed content is specially filtered out.', $t_args),
+  );
+
+  $perms["view trash bin"] = array(
+    'title' => t('View @trashed listing and content pages', $t_args),
+    'description' => t('Users with this permission will be able to view @trashed content in the @trashed listing and visit the content view pages.', $t_args),
+  );
+
+  // Generate standard node permissions for all applicable node types.
+  foreach (node_type_get_names() as $type => $name) {
+    // Build standard list of node permissions for this type.
+    $perms["trash any $type content"] = array(
+      'title' => t('%type_name: @trash any content', $t_args + array('%type_name' => $name)),
+    );
+    $perms["trash own $type content"] = array(
+      'title' => t('%type_name: @trash own content', $t_args + array('%type_name' => $name)),
+    );
+    $perms["untrash any $type content"] = array(
+      'title' => t('%type_name: @untrash any content', $t_args + array('%type_name' => $name)),
+      'description' => t('Must be able to view @trashed content to r@untrash.', $t_args),
+    );
+    $perms["untrash own $type content"] = array(
+      'title' => t('%type_name: @untrash own content', $t_args + array('%type_name' => $name)),
+      'description' => t('Must be able to view @trashed content to @untrash.', $t_args),
+    );
+  }
+
+  return $perms;
+}
+
+/**
+ * Implements hook_og_permission().
+ */
+function trash_flag_og_permission() {
+  if ($flag = flag_get_flag('trash')) {
+    $trash_action = drupal_strtolower($flag->title);
+    $trashed = drupal_strtolower($flag->unflag_denied_text);
+    $untrash_action = drupal_strtolower($flag->unflag_short);
+  }
+  else {
+    $trash_action = 'trash';
+    $untrash_action = 'untrash';
+    $trashed = 'trashed';
+  }
+  $perms = array();
+  $t_args = array('@trash' => $trash_action, '@untrash' => $untrash_action, '@trashed' => $trashed);
+
+  $perms["trash any content"] = array(
+    'title' => t('@trash any content', $t_args),
+    'default role' => array(),
+    'restrict access' => TRUE,
+  );
+  $perms["untrash any content"] = array(
+    'title' => t('@untrash any content', $t_args),
+    'description' => t('Must be able to view @trashed content to @untrash.', $t_args),
+    'default role' => array(),
+    'restrict access' => TRUE,
+  );
+  $perms["view trash content"] = array(
+    'title' => t('View @trashed content', $t_args),
+    'description' => t('Users with this permission will be able to view @trashed content as normal, unless the @trashed content is specifically filtered out.', $t_args),
+    'default role' => array(),
+    'restrict access' => TRUE,
+  );
+  $perms["view trash bin"] = array(
+    'title' => t('View @trashed listing and content pages', $t_args),
+    'description' => t('Users with this permission will be able to view @trashed content in the @trashed listing and the content view pages.', $t_args),
+    'default role' => array(),
+    'restrict access' => TRUE,
+  );
+
+  // Generate standard node permissions for all applicable node types.
+  foreach (node_type_get_names() as $type => $name) {
+    if (og_is_group_content_type('node', $type)) {
+      $info = node_type_get_type($type);
+      // Build standard list of node permissions for this type.
+      $perms["trash any $type content"] = array(
+        'title' => t('%type_name: @trash any content', $t_args + array('%type_name' => $name)),
+        'default role' => array(OG_AUTHENTICATED_ROLE),
+        'restrict access' => TRUE,
+      );
+      $perms["trash own $type content"] = array(
+        'title' => t('%type_name: @trash own content', $t_args + array('%type_name' => $name)),
+        'default role' => array(OG_AUTHENTICATED_ROLE),
+        'restrict access' => TRUE,
+      );
+      $perms["untrash any $type content"] = array(
+        'title' => t('%type_name: @untrash any content', $t_args + array('%type_name' => $name)),
+        'description' => t('Must be able to view @trashed content to @untrash.', $t_args),
+        'default role' => array(),
+        'restrict access' => TRUE,
+      );
+      $perms["untrash own $type content"] = array(
+        'title' => t('%type_name: @untrash own content', $t_args + array('%type_name' => $name)),
+        'description' => t('Must be able to view @trashed content to @untrash.', $t_args),
+        'default role' => array(),
+        'restrict access' => TRUE,
+      );
+    }
+  }
+
+  return $perms;
+}
+
+/**
+ * Implements hook_node_access_records().
+ *
+ * Allows users to view content if 'view trash content' as normal.
+ */
+function trash_flag_node_access_records($node) {
+  if (($flag = flag_load('trash')) && $flag->is_flagged($node->nid)) {
+    return array(array(
+      'realm' => 'trash_flag',
+      'gid' => 1,
+      'grant_view' => $node->status,
+      'grant_update' => 0,
+      'grant_delete' => 0,
+      'priority' => 10000,
+    ));
+  }
+}
+
+/**
+ * Implements hook_node_grants().
+ */
+function trash_flag_node_grants($account, $op) {
+  $grants = array();
+  if (user_access("view trash content", $account)) {
+    $grants['trash_flag'] = array(1);
+  }
+  return $grants;
+}
+
+/**
+ * Implements hook_node_access().
+ *
+ * Allows users to view trash directly, either via trashbin or view all perm.
+ */
+function trash_flag_node_access($node, $op, $account) {
+  // Assumption is if being directly called, likely a direct node page view.
+  if ($op == 'view' && ($flag = flag_load('trash')) && $flag->is_flagged($node->nid)) {
+    $access = og_user_access_entity('administer group', 'node', $node, $account);
+    if (!is_null($access)) {
+      if (og_user_access_entity("view trash bin", 'node', $node, $account)) {
+        return NODE_ACCESS_ALLOW;
+      }
+    }
+    return user_access("view trash content", $account) || user_access("view trash bin", $account) ? NODE_ACCESS_ALLOW : NODE_ACCESS_DENY;
+  }
+}
