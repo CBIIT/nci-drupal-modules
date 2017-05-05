@@ -7,6 +7,7 @@
 
 Drupal.behaviors.workbenchModerationSettingsSummary = {
   attach: function(context) {
+   $('.node-form-revision-information .form-item-log label').text('Message');
     $('fieldset.node-form-options', context).drupalSetSummary(function (context) {
       var vals = [];
 

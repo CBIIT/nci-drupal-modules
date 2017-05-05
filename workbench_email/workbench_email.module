@@ -147,10 +147,11 @@ function workbench_email_workbench_moderation_transition($node, $previous_state,
  *   The node returned from node_save
  */
 function workbench_email_mail_send($email, $email_transition, $node) {
+    global $user;
   $module = 'workbench_email';
   $key = 'we_transition';
   $to = $email;
-  $from = variable_get('site_mail', 'admin@example.com');
+  $from = $user->mail;
   $role = workbench_email_get_role_by_rid($email_transition->rid);
   if (empty($email_transition->subject) && empty($email_transition->message)) {
     drupal_set_message(

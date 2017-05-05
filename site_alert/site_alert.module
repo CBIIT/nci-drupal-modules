@@ -125,7 +125,7 @@ function site_alert_admin() {
     '#description' => t('Allowed tags are a, strong, and em'),
     '#title' => 'Content',
     '#default_value' => $alert,
-    '#required' => TRUE,
+   '#required' => TRUE,
     '#rows' => 2,
   );
 

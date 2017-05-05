@@ -940,6 +940,10 @@ function workbench_moderation_form_node_form_alter(&$form, $form_state) {
   }
 
   // Store the current moderation state
+  if (arg(0) == 'node' && arg(1) == 'add' && arg(2) == 'service' ) {
+    $moderation_state = wbm_default_state_check_moderation_state($form['type']['#value'], $user);
+  }
+  
   $form['workbench_moderation_state_current'] = array(
     '#type' => 'value',
     '#value' => $moderation_state
@@ -956,12 +960,23 @@ function workbench_moderation_form_node_form_alter(&$form, $form_state) {
   if ($states = workbench_moderation_states_next($moderation_state, $user, $form['#node'])) {
     $states[$moderation_state] = t('@state (Current)', array('@state' => workbench_moderation_state_label($moderation_state)));
     $states_sorted = array();
-    foreach (array_keys(workbench_moderation_states()) as $state) {
+    $state_array = workbench_moderation_states();
+    if (arg(0) == 'node' && is_numeric(arg(1)) && arg(2) == 'edit') {
+    $node_info = node_load(arg(1));
+        $authenticated_user = user_load($node_info->uid);
+        if(count($authenticated_user->roles) == '1' && $user->uid != $node_info->uid) {
+            unset($state_array['in_queue']);
+        }
+        if(count($authenticated_user->roles) > '1') {
+            unset($state_array['pending_review_by_requester']);
+        }
+    }
+    foreach (array_keys($state_array) as $state) {
       if (array_key_exists($state, $states)) {
         $states_sorted[$state] = $states[$state];
       }
     }
-    $states = $states_sorted;
+     $states = $states_sorted;
 
     $form['revision_information']['workbench_moderation_state_new'] = array(
       '#title' => t('Moderation state'),
@@ -974,11 +989,14 @@ function workbench_moderation_form_node_form_alter(&$form, $form_state) {
     // If the user has access to the pre-set default state, make it the default
     // here.  Otherwise, don't set a default in this case.
     $default_state = variable_get('workbench_moderation_default_state_' . $form['type']['#value']);
-    if ($default_state && array_key_exists($default_state, $states)) {
-      $form['revision_information']['workbench_moderation_state_new']['#default_value'] = $default_state;
+    
+    if (arg(0) == 'node' && arg(1) == 'add' && arg(2) == 'service' ) {
+        $default_state = wbm_default_state_check_moderation_state($form['type']['#value'], $user);
+        $form['revision_information']['workbench_moderation_state_new']['#default_value'] = $default_state;
     }
     else {
-      $form['revision_information']['workbench_moderation_state_new']['#default_value'] = workbench_moderation_state_none();
+    $node_info = node_load(arg(1));
+       $form['revision_information']['workbench_moderation_state_new']['#default_value'] = $node_info->workbench_moderation['current']->state;
     }
   }
   else {
@@ -1773,6 +1791,14 @@ function workbench_moderation_get_moderation_links($node, $url_options = array()
   $my_revision = $node->workbench_moderation['my_revision'];
   if ($my_revision->vid == $node->workbench_moderation['current']->vid
       && $next_states = workbench_moderation_states_next($my_revision->state, NULL, $node)) {
+     // if (arg(0) == 'node' && is_numeric(arg(1)) && arg(2) == 'edit') {
+    $authenticated_user = user_load($node->uid);
+    if(count($authenticated_user->roles) == '1') {
+        unset($next_states['in_queue']);
+    } else {
+        unset($next_states['pending_review_by_requester']);
+    }
+   // }
     foreach ($next_states as $state => $label) {
       $link = array_merge($url_options, array(
         'title' => t('Change to %label', array('%label' => workbench_moderation_state_label($state))),
@@ -1811,6 +1837,13 @@ function workbench_moderation_moderate_form($form, &$form_state, $node, $destina
       '#type' => 'value',
       '#value' => $node,
     );
+    $authenticated_user = user_load($node->uid);
+    if(count($authenticated_user->roles) == '1' && $user->uid != $node->uid) {
+        unset($next_states['in_queue']);
+    }
+    if(count($authenticated_user->roles) > '1') {
+        unset($next_states['pending_review_by_requester']);
+    }
     $form['#attributes']['class'][] = 'workbench-moderation-moderate-form';
     $form['#attached']['css'][] = drupal_get_path('module', 'workbench_moderation') . '/css/workbench_moderation.css';
     $form['state'] = array(
