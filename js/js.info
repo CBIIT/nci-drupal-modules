@@ -4,9 +4,9 @@ package = Performance
 core = "7.x"
 configure = admin/config/system/js
 
-; Information added by Drupal.org packaging script on 2017-03-16
-version = "7.x-2.3"
+; Information added by Drupal.org packaging script on 2017-04-19
+version = "7.x-2.4"
 core = "7.x"
 project = "js"
-datestamp = "1489706286"
+datestamp = "1492622645"
 

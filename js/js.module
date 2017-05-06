@@ -88,11 +88,28 @@ function js_preprocess_html() {
 
 /**
  * Implements hook_custom_theme().
- *
- * Used to set the theme to be used for JS requests.
  */
 function js_custom_theme() {
   global $_js;
+
+  // During a full bootstrap, hook_custom_theme() is invoked just before
+  // hook_init(). Here we can make sure that hook_init() implementations
+  // provided by callback dependencies are not invoked twice, in case a full
+  // bootstrap is performed after invoking them in js_callback_bootstrap().
+  if (!empty($_js['module']) && !empty($_js['callback'])) {
+    $info = js_get_callback($_js['module'], $_js['callback']);
+    if (!$info['skip init'] && $info['dependencies']) {
+      $implementations = &drupal_static('module_implements');
+      // After a global cache clear, hook implementation info is not available
+      // yet, so we explicitly rebuild it.
+      if (!isset($implementations['init'])) {
+        module_implements('init');
+      }
+      $implementations['init'] = array_diff_key($implementations['init'], array_flip($info['dependencies']));
+    }
+  }
+
+  // Set the theme to be used for JS requests.
   if (!empty($_js['theme'])) {
     return $_js['theme'];
   }
@@ -488,10 +505,8 @@ function js_execute_request() {
     register_shutdown_function('_js_fatal_error_handler');
   }
 
-  // Memcache requires an additional bootstrap phase to access variables.
-  if (!empty($conf['cache_default_class']) && $conf['cache_default_class'] === 'MemCacheDrupal') {
-    js_bootstrap(DRUPAL_BOOTSTRAP_VARIABLES);
-  }
+  // Initialize the cache system and our custom handler.
+  _js_cache_initialize();
 
   // Immediately clone the request method so it cannot be altered any further.
   static $method;
@@ -605,6 +620,42 @@ function js_execute_request() {
 }
 
 /**
+ * Initializes the cache system and our custom handler.
+ */
+function _js_cache_initialize() {
+  global $conf;
+
+  // Skip autoloading, we do not need its overhead. Additionally it may trigger
+  // cache initialization.
+  module_load_include('php', 'js', 'src/JsProxyCache');
+
+  // Collect all the explicitly configured cache bins.
+  $default_key = JsProxyCache::DEFAULT_BIN_KEY;
+  $cache_bin_keys = array_values(array_filter(array_keys($conf), function ($key) {
+    return strpos($key, 'cache_class_') === 0;
+  }));
+  $cache_bin_keys[] = $default_key;
+
+  // Save the current configuration and override it to make sure an instance of
+  // our custom wrapper is instantiated for each configured bin.
+  $cache_conf = array();
+  $default_class = isset($conf[$default_key]) ? $conf[$default_key] : 'DrupalDatabaseCache';
+  foreach ($cache_bin_keys as $bin_key) {
+    $cache_conf[$bin_key] = isset($conf[$bin_key]) ? $conf[$bin_key] : $default_class;
+    $conf[$bin_key] = 'JsProxyCache';
+  }
+
+  // Finally ensure our custom wrappers know which actual cache backend they are
+  // supposed to use.
+  JsProxyCache::setConf($cache_conf);
+
+  // Memcache requires an additional bootstrap phase to access variables.
+  if (!empty($cache_conf[$default_key]) && $cache_conf[$default_key] === 'MemCacheDrupal') {
+    js_bootstrap(DRUPAL_BOOTSTRAP_VARIABLES);
+  }
+}
+
+/**
  * Sends content to the browser via the delivery callback.
  *
  * @param mixed $result
@@ -635,6 +686,12 @@ function js_deliver($result, array $info = NULL) {
   if ($delivery_callback === 'js_deliver_json') {
     module_load_include('inc', 'js', 'includes/json');
   }
+
+  // Since most callbacks act at a bootstrap level lower than full, that is
+  // without loading all modules, we need to make sure hook implementation cache
+  // is never written while processing a JS request.
+  $implementations = &drupal_static('module_implements');
+  unset($implementations['#write_cache']);
 
   // Deliver the results. The delivery callback is responsible for setting the
   // appropriate headers, handling the result returned from the callback and
@@ -784,6 +841,7 @@ function js_get_callback($module = NULL, $callback = NULL, $reset = FALSE) {
             'access arguments' => array(),
             'access callback'  => FALSE,
             'bootstrap' => DRUPAL_BOOTSTRAP_DATABASE,
+            'cache' => TRUE,
             // Provide a standard function name to use if none is provided.
             'callback function' => $_module . '_js_callback_' . $_callback,
             'callback arguments' => array(),

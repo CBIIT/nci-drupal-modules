@@ -181,6 +181,12 @@ function js_callback_bootstrap(array &$info) {
         module_invoke($module, 'init');
       }
     }
+
+    // At this point in the execution flow it is safe to allow our cache handler
+    // to perform a full bootstrap in case of cache misses.
+    if ($info['cache']) {
+      JsProxyCache::setFullBootstrapAllowed(TRUE);
+    }
   }
 }
 
