@@ -178,7 +178,7 @@ function uuid_features_features_api() {
 
   if (module_exists('fieldable_panels_panes')) {
     $components['uuid_fpp'] = array(
-      'name' => t('Fieldable Panels Pane'),
+      'name' => t('Fieldable Panels Panes Content'),
       'feature_source' => TRUE,
       'default_hook' => 'uuid_features_default_fpps',
       'default_file' => FEATURES_DEFAULTS_INCLUDED,
@@ -723,6 +723,16 @@ function _uuid_features_file_field_import_file(&$file, $module = NULL) {
       if (file_put_contents($file->uri, base64_decode($file->uuid_features_file_data))) {
         $file = file_save($file);
       }
+    }
+  }
+  // The file is in a local location and available in DB as managed file, but
+  // missed in the destination, move it to the destination without file save.
+  elseif (isset($file->uuid_features_file_path) && is_file($file->uuid_features_file_path)
+    && !is_file($file->uri) && file_load_multiple(array(), array('uri' => $file->uri))) {
+    $directory = drupal_dirname($file->uri);
+    if (file_prepare_directory($directory, FILE_CREATE_DIRECTORY)) {
+      $uuid_features_file_path = $file->uuid_features_file_path;
+      file_unmanaged_copy($uuid_features_file_path, $file->uri, FILE_EXISTS_REPLACE);
     }
   }
   // The file is in a local location, move it to the destination then finish the
