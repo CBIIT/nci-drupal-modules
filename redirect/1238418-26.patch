@@ -1,0 +1,74 @@
+diff --git a/redirect.admin.inc b/redirect.admin.inc
+index 1e80438..234127d 100644
+--- a/redirect.admin.inc
++++ b/redirect.admin.inc
+@@ -493,6 +493,10 @@ function redirect_element_validate_redirect($element, &$form_state) {
+ 
+ /**
+  * Extract the query and fragment parts out of an URL field.
++ *
++ * The "url" parameter of the returning array can be:
++ *   - a raw URL, if the URL is absolute
++ *   - an internal Drupal path (URL-decoded)
+  */
+ function _redirect_extract_url_options(&$element, &$form_state) {
+   $value = &$element['#value'];
+@@ -523,7 +527,7 @@ function _redirect_extract_url_options(&$element, &$form_state) {
+   }
+ 
+   if (!url_is_external($parsed['url'])) {
+-    $parsed['url'] = drupal_get_normal_path($parsed['url'], $form_state['values']['language']);
++    $parsed['url'] = drupal_get_normal_path(rawurldecode($parsed['url']), $form_state['values']['language']);
+   }
+ 
+   form_set_value($element, $parsed['url'], $form_state);
+diff --git a/redirect.module b/redirect.module
+index 993eeed..bf0ec19 100644
+--- a/redirect.module
++++ b/redirect.module
+@@ -1121,7 +1121,16 @@ function redirect_redirect($redirect = NULL) {
+  */
+ function redirect_goto($redirect) {
+   $redirect->redirect_options['absolute'] = TRUE;
+-  $url = url($redirect->redirect, $redirect->redirect_options);
++  if (file_exists(DRUPAL_ROOT . '/' . $redirect->redirect)) {
++    // If we deal with file, construct URL in the same way as it's done in the
++    // file_create_url(), but process other options too, for example, query
++    // parameters.
++    /* @see file_create_url() */
++    $url = url($GLOBALS['base_url'] . '/' . drupal_encode_path($redirect->redirect), array('external' => TRUE) + $redirect->redirect_options);
++  }
++  else {
++    $url = url($redirect->redirect, $redirect->redirect_options);
++  }
+   drupal_add_http_header('Location', $url);
+   drupal_add_http_header('Status', redirect_status_code_options($redirect->status_code));
+ 
+@@ -1344,7 +1353,7 @@ function redirect_language_load($language = LANGUAGE_NONE) {
+ }
+ 
+ /**
+- * Build the URL of a redirect for display purposes only.
++ * Build the URL of a redirect for display/edit purposes only.
+  */
+ function redirect_url($path, array $options = array(), $clean_url = NULL) {
+   if (!isset($clean_url)) {
+@@ -1376,11 +1385,16 @@ function redirect_url($path, array $options = array(), $clean_url = NULL) {
+     }
+   }
+ 
+-  if (empty($options['absolute']) || url_is_external($path)) {
++  // If we deal with internal Drupal path, it should be URL-encoded, so we have
++  // the same behavior as with absolute URLs.
++  if (url_is_external($path)) {
+     $url = $path;
+   }
++  elseif (empty($options['absolute'])) {
++    $url = drupal_encode_path($path);
++  }
+   else {
+-    $url = $options['base_url'] . base_path() . $path;
++    $url = $options['base_url'] . base_path() . drupal_encode_path($path);
+   }
+ 
+   if (isset($options['query'])) {

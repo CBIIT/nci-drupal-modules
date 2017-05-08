@@ -1121,16 +1121,7 @@ function redirect_redirect($redirect = NULL) {
  */
 function redirect_goto($redirect) {
   $redirect->redirect_options['absolute'] = TRUE;
-  if (file_exists(DRUPAL_ROOT . '/' . $redirect->redirect)) {
-    // If we deal with file, construct URL in the same way as it's done in the
-    // file_create_url(), but process other options too, for example, query
-    // parameters.
-    /* @see file_create_url() */
-    $url = url($GLOBALS['base_url'] . '/' . drupal_encode_path($redirect->redirect), array('external' => TRUE) + $redirect->redirect_options);
-  }
-  else {
-    $url = url($redirect->redirect, $redirect->redirect_options);
-  }
+  $url = url($redirect->redirect, $redirect->redirect_options);
   drupal_add_http_header('Location', $url);
   drupal_add_http_header('Status', redirect_status_code_options($redirect->status_code));
 
@@ -1353,7 +1344,7 @@ function redirect_language_load($language = LANGUAGE_NONE) {
 }
 
 /**
- * Build the URL of a redirect for display/edit purposes only.
+ * Build the URL of a redirect for display purposes only.
  */
 function redirect_url($path, array $options = array(), $clean_url = NULL) {
   if (!isset($clean_url)) {
@@ -1385,16 +1376,11 @@ function redirect_url($path, array $options = array(), $clean_url = NULL) {
     }
   }
 
-  // If we deal with internal Drupal path, it should be URL-encoded, so we have
-  // the same behavior as with absolute URLs.
-  if (url_is_external($path)) {
+  if (empty($options['absolute']) || url_is_external($path)) {
     $url = $path;
   }
-  elseif (empty($options['absolute'])) {
-    $url = drupal_encode_path($path);
-  }
   else {
-    $url = $options['base_url'] . base_path() . drupal_encode_path($path);
+    $url = $options['base_url'] . base_path() . $path;
   }
 
   if (isset($options['query'])) {
