@@ -10,7 +10,7 @@ ul.references-dialog-links li.active, ul.references-dialog-links li a.active {
 }
 
 ul.references-dialog-links a {
-  padding-left: 20px;
+  padding-left: 20px !important;
   margin: 5px;
 }
 
