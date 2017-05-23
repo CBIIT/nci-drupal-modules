@@ -1,0 +1,7 @@
+CKeditor Responsive Plugin 7.x-1.0-beta1, 2016-11-22
+--------------------------
+- Change module's composer namespace
+- Update documentation
+- Update README.txt
+- Change text strings to english
+- Edit module's metadata

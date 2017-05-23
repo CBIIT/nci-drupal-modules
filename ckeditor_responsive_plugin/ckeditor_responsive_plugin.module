@@ -1,0 +1,49 @@
+<?php
+/**
+ * @file
+ * Hooks implementations.
+ */
+
+/**
+ * Add the basepath to the Drupal.settings js object.
+ * Implements hook_page_build().
+ *
+ * @param array $page
+ *    Page array.
+ */
+function ckeditor_responsive_plugin_page_build(array &$page) {
+
+  $module_base_path = url( drupal_get_path('module', 'ckeditor_responsive_plugin'),
+    array(
+      'absolute'=>true,
+    )
+  );
+
+  $my_settings = array(
+    'basePath' => $module_base_path,
+  );
+  drupal_add_js(array('ckeditor_responsive_plugin' => $my_settings), 'setting');
+}
+
+/**
+ * Define the CKEditor plugin.
+ * Implements hook_ckeditor_plugin().
+ *
+ * @return array
+ *   CKEditor settings.
+ */
+function ckeditor_responsive_plugin_ckeditor_plugin() {
+  return array(
+    'responsivness' => array(
+      'name' => 'responsivness',
+      'desc' => t('CKEditor Responsive Plugin : Allow to insert responsive areas'),
+      'path' => drupal_get_path('module', 'ckeditor_responsive_plugin') . '/responsivness/',
+      'buttons' => array(
+        'responsivness' => array(
+          'icon' => 'images/responsivness.png',
+          'label' => t('Add responsive area'),
+        ),
+      ),
+    ),
+  );
+}

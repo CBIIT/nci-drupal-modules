@@ -1,0 +1,13 @@
+name = CKeditor Responsive Plugin
+description = This module provide a CKeditor plugin which allows the user to add responsive area in a textarea
+dependencies[] = ckeditor
+package = User interface
+core = 7.x
+configure   = admin/config/content/ckeditor
+
+; Information added by Drupal.org packaging script on 2016-11-22
+version = "7.x-1.0-beta1"
+core = "7.x"
+project = "ckeditor_responsive_plugin"
+datestamp = "1479802745"
+
