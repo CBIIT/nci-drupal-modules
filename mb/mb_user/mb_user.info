@@ -1,0 +1,13 @@
+name = More Buttons User
+description = "Provides additional buttons for content in user context such as <em>Cancel</em> and <em>Save and continue</em>."
+package = "More Buttons"
+dependencies[] = mb
+core = 7.x
+files[] = mb_user.module
+
+; Information added by Drupal.org packaging script on 2014-10-13
+version = "7.x-1.0-beta1+3-dev"
+core = "7.x"
+project = "mb"
+datestamp = "1413212085"
+

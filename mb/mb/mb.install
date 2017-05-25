@@ -1,0 +1,23 @@
+<?php
+
+/**
+ * @file
+ * Installs, updates, and uninstalls More Buttons.
+ */
+
+/**
+ * Implements hook_install().
+ */
+function mb_install() {
+  module_load_include('module', 'mb');
+  $default_values = mb_default_values();
+  variable_set('mb_values', $default_values);
+}
+
+/**
+ * Implements hook_uninstall().
+ */
+function mb_uninstall() {
+  // Remove variables.
+  variable_del('mb_values');
+}

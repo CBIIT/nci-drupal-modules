@@ -1,0 +1,15 @@
+name = More Buttons Comment
+description = "Provides an <em>Cancel</em> button for comments."
+package = "More Buttons"
+dependencies[] = comment
+dependencies[] = mb
+core = 7.x
+files[] = mb_comment.module
+files[] = mb_comment.admin.module
+
+; Information added by Drupal.org packaging script on 2014-10-13
+version = "7.x-1.0-beta1+3-dev"
+core = "7.x"
+project = "mb"
+datestamp = "1413212085"
+
