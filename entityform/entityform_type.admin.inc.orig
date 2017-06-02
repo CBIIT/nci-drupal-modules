@@ -42,10 +42,6 @@ class EntityformTypeUIController extends EntityDefaultUIController {
 function entityform_type_form($form, &$form_state, $entityform_type, $op = 'edit') {
   $labels = $entityform_type->getLabelsForTranslation();
   if ($op == 'clone') {
-    // Set the original entity type. Unfortunately we can access this
-    // information just by args as it is removed everywhere else.
-    $form['#entityform_type_original'] = arg(4);
-    $form_state['#entityform_type_original'] = arg(4);
     $entityform_type->label .= ' (cloned)';
     $entityform_type->type = '';
   }
@@ -82,42 +78,6 @@ function entityform_type_form($form, &$form_state, $entityform_type, $op = 'edit
     // Don't allow changing machine name.
     '#access' => empty($entityform_type->type),
   );
-
-  if ($op == 'clone') {
-    $form['clone'] = array(
-      '#tree' => TRUE,
-      '#type' => 'fieldset',
-      '#title' => t('Clone settings'),
-      '#weight' => -48,
-    );
-    $form['clone']['fields'] = array(
-      '#title' => t('Clone field configuration'),
-      '#type' => 'checkbox',
-      '#default_value' => TRUE,
-      '#description' => t('If enabled also the field configuration is duplicated.'),
-    );
-    // Check for module integrations.
-    $module_integrations = array(
-      'field_group' => t('Field group'),
-      'conditional_fields' => t('Conditional Fields'),
-      'field_validation' => t('Field Validation'),
-    );
-    foreach ($module_integrations as $module => $module_name) {
-      if (module_exists($module)) {
-        $form['clone'][$module] = array(
-          '#title' => t('Clone settings of module %module', array('%module' => $module_name)),
-          '#type' => 'checkbox',
-          '#default_value' => TRUE,
-          '#states' => array(
-            'invisible' => array(
-              'input[name="clone[fields]"]' => array('checked' => FALSE),
-            ),
-          ),
-        );
-      }
-    }
-  }
-
   $form['data']['#tree'] = TRUE;
 
   $form['data']['redirect_path'] = array(
@@ -633,71 +593,6 @@ function entityform_type_form_submit(&$form, &$form_state) {
     $form_state['redirect'] = "admin/structure/entityform_types/manage/{$entityform_type->type}/fields";
   }
   $entityform_type->save();
-
-  // Additional handling for the clone operation.
-  if ($form_state['op'] == 'clone') {
-
-    // Clone fields.
-    if (!empty($form_state['values']['clone']['fields'])) {
-      $entityform_type_original = $form_state['#entityform_type_original'];
-      $instances = field_info_instances('entityform', $entityform_type_original);
-      foreach ($instances as $instance) {
-        $instance['bundle'] = $entityform_type->type;
-        field_create_instance($instance);
-      }
-
-      // Field group integration.
-      if (!empty($form_state['values']['clone']['field_group']) && module_exists('field_group')) {
-        $source_groups = field_group_read_groups(array(
-          'bundle' => $entityform_type_original,
-          'entity_type' => 'entityform',
-        ));
-        if (!empty($source_groups['entityform'][$entityform_type_original])) {
-          ctools_include('export');
-          foreach ($source_groups['entityform'][$entityform_type_original] as $mode => $groups) {
-            foreach ($groups as $source_group) {
-              // Recreate the identifier and reset the id.
-              $source_group->id = NULL;
-              $source_group->bundle = $entityform_type->type;
-              $source_group->identifier = $source_group->group_name . '|' . $source_group->entity_type . '|' . $source_group->bundle . '|' . $source_group->mode;
-              unset($source_group->export_type, $source_group->type, $source_group->table);
-
-              // Save it in ctools.
-              ctools_export_crud_save('field_group', $source_group);
-            }
-          }
-        }
-      }
-
-      // Field Validation integration.
-      if (!empty($form_state['values']['clone']['field_validation']) && module_exists('field_validation')) {
-        $rules = ctools_export_load_object('field_validation_rule', 'conditions', array(
-          'entity_type' => 'entityform',
-          'bundle' => $entityform_type_original,
-        ));
-        foreach ($rules as $rule) {
-          unset($rule->ruleid);
-          $rule->bundle = $entityform_type->type;
-          unset($rule->export_type, $rule->type, $rule->in_code_only, $rule->table);
-          drupal_write_record('field_validation_rule', $rule);
-        }
-      }
-
-      // Conditional fields integration.
-      if (!empty($form_state['values']['clone']['conditional_fields']) && module_exists('conditional_fields')) {
-        $conditions = conditional_fields_load_dependencies('entityform', $entityform_type_original);
-        if (!empty($conditions['dependents'])) {
-          foreach ($conditions['dependents'] as $dependent => $dependent_conditions) {
-            $dependent_instance = field_info_instance('entityform', $dependent, $entityform_type->type);
-            foreach ($dependent_conditions as $condition) {
-              $dependee_instance = field_info_instance('entityform', $condition['dependee'], $entityform_type->type);
-              conditional_fields_dependency_insert($dependee_instance['id'], $dependent_instance['id'], $condition['options']);
-            }
-          }
-        }
-      }
-    }
-  }
 }
 
 
