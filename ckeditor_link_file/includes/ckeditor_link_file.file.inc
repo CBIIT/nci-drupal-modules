@@ -63,6 +63,7 @@ function ckeditor_link_file_ckeditor_link_file_url($path, $langcode) {
   $fid = $matches[1];
 
   $link_method = variable_get('ckeditor_link_file_link_method', 'file');
+  $options = array();
 
   switch ($link_method) {
     case 'file':
@@ -73,11 +74,14 @@ function ckeditor_link_file_ckeditor_link_file_url($path, $langcode) {
       $url = file_create_url($file->uri);
       break;
     case 'download':
-      $url = "file/$fid/download";
+      $file = file_load($fid);
+      $uri = file_entity_download_uri($file);
+      $url = $uri['path'];
+      $options = $uri['options'];
       break;
   }
 
-  return ckeditor_link_url($url, $langcode);
+  return ckeditor_link_url($url, $langcode, $options);
 }
 
 /**

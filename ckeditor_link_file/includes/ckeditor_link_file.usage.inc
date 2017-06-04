@@ -96,21 +96,57 @@ function ckeditor_link_file_filter_parse_from_fields($entity_type, $entity) {
   foreach (_ckeditor_link_file_filter_fields_with_text_filtering($entity_type, $entity) as $field_name) {
     if ($field_items = field_get_items($entity_type, $entity, $field_name)) {
       foreach ($field_items as $field_item) {
-        // Find all links in the text field.
-        $dom = new DOMDocument;
-        $dom->loadHTML($field_item['value']);
-        $links = $dom->getElementsByTagName('a');
+        // Only search for links within text fields that have content.
+        if (!empty($field_item['value'])) {
+          // Disable standard libxml errors and handle them ourselves.
+          // The function returns the state of error handling prior to calling it
+          // so we store the value in order to properly respect any previous
+          // modifications to the state of error handling.
+          $previous_state = libxml_use_internal_errors(TRUE);
 
-        // Loop through all of the links and check if they represent files.
-        foreach ($links as $link) {
-          // Find the link's href and trim off the leading slash.
-          $href = ltrim($link->getAttribute('href'), '/');
+          $dom = new DOMDocument;
 
-          // Check if the link belongs to CKEditor Link File.
-          preg_match_all('`^file/(\d+)$`', $href, $matches);
+          // Proceed if the HTML was loaded successfully.
+          if ($dom->loadHTML($field_item['value'])) {
+            // Get any libxml errors.
+            $errors = libxml_get_errors();
 
-          foreach ($matches[1] as $fid) {
-            $file_references[] = array('fid' => $fid);
+            // Loop through the errors and log them with the watchdog.
+            foreach ($errors as $error) {
+              $uri = entity_uri($entity_type, $entity);
+
+              // Build a link to view the entity associated with the error.
+              if (!empty($uri)) {
+                $link = l(t('view'), $uri['path'], array($uri['options']));
+              }
+              else {
+                $link = NULL;
+              }
+
+              watchdog('ckeditor_link_file', '@message on line @line at column @column.', array('@message' => $error->message, '@line' => $error->line, '@column' => $error->column), WATCHDOG_NOTICE, $link);
+            }
+
+            // Clear the libxml error buffer.
+            libxml_clear_errors();
+
+            // Restore libxml error handling to its previous state.
+            libxml_use_internal_errors($previous_state);
+
+            // Find all links in the text field.
+            $links = $dom->getElementsByTagName('a');
+
+            // Loop through all of the links and check if they represent files.
+            foreach ($links as $link) {
+              // Find the link's href and trim off the leading slash.
+              $href = ltrim($link->getAttribute('href'), '/');
+
+              // Check if the link belongs to CKEditor Link File.
+              preg_match_all('`^file/(\d+)$`', $href, $matches);
+
+              foreach ($matches[1] as $fid) {
+                $file_references[] = array('fid' => $fid);
+              }
+            }
           }
         }
       }
