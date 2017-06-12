@@ -104,7 +104,7 @@ function media_youtube_preprocess_media_youtube_video(&$variables) {
     $protocol = $variables['options']['protocol'];
   }
   else {
-    $protocol = '';
+    $protocol = 'https:';
   }
 
   // Non-query options.
@@ -113,7 +113,6 @@ function media_youtube_preprocess_media_youtube_video(&$variables) {
   }
   else {
     $url_base = 'youtube.com';
-    $protocol = 'http:';
   }
 
   // Add some options as their own template variables.

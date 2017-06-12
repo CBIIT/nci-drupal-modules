@@ -47,9 +47,9 @@ class MediaInternetYouTubeHandler extends MediaInternetBaseHandler {
       preg_match_all($pattern, $embedCode, $matches);
       // @TODO: Parse is called often. Refactor so that valid ID is checked
       // when a video is added, but not every time the embedCode is parsed.
-      if (isset($matches[1][0]) && self::validId($matches[1][0])) {
+      if (isset($matches[1][0]) && $this->validId($matches[1][0])) {
         $uri = 'youtube://v/' . $matches[1][0];
-        if (isset($matches[2][0]) && self::validId($matches[2][0], 'l')) {
+        if (isset($matches[2][0]) && $this->validId($matches[2][0], 'l')) {
           $uri .= '/l/' . $matches[2][0];
          }
         return file_stream_wrapper_uri_normalize($uri);

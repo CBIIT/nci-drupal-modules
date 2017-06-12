@@ -146,7 +146,6 @@ function media_wysiwyg_token_to_markup($match, $wysiwyg = FALSE, $langcode = NUL
     }
 
     $tag_info = drupal_json_decode($tag);
-
     if (!isset($tag_info['fid'])) {
       throw new Exception('No file Id');
     }
@@ -216,7 +215,9 @@ function media_wysiwyg_token_to_markup($match, $wysiwyg = FALSE, $langcode = NUL
     $attribute_whitelist = media_wysiwyg_allowed_attributes();
     $settings['attributes'] = array_intersect_key($attributes, array_flip($attribute_whitelist));
     $settings['fields'] = $fields;
-
+    if (isset($tag_info['fields']['external_url'])) {
+      $settings['fields']['external_url'] = $tag_info['fields']['external_url'];
+    }
     if (!empty($tag_info['attributes']) && is_array($tag_info['attributes'])) {
       $settings['attributes'] = array_intersect_key($tag_info['attributes'], array_flip($attribute_whitelist));
 
