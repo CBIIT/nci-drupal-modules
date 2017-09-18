@@ -1,12 +1,14 @@
-name = Image crop
+; $Id$
+name= Image crop
 description = Add cropping ability to images using javascript
 core = 7.x
+version = 7.x-2.x-dev
 dependencies[] = image
 files[] = imagefield_crop.module
 
-; Information added by Drupal.org packaging script on 2017-04-13
-version = "7.x-2.0+30-dev"
+; Information added by drupal.org packaging script on 2012-01-26
+version = "7.x-2.0"
 core = "7.x"
 project = "imagefield_crop"
-datestamp = "1492094054"
+datestamp = "1327568141"
 

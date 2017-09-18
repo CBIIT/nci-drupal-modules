@@ -1,4 +1,6 @@
+/* $Id: imagefield_crop.js,v 1.1.2.3.2.10 2009/11/11 08:12:53 yhager Exp $ */
 (function ($) {
+
 
 Drupal.behaviors.imagefield_crop = {
   attach: function (context, settings) {
@@ -57,8 +59,7 @@ Drupal.behaviors.imagefield_crop = {
           aspectRatio: settings.imagefield_crop[id].box.ratio,
           boxWidth: settings.imagefield_crop[id].box.box_width,
           boxHeight: settings.imagefield_crop[id].box.box_height,
-          minSize: [Drupal.settings.imagefield_crop[id].minimum.width, Drupal.settings.imagefield_crop[id].minimum.height],
-          keySupport: false,
+          minSize: [Drupal.settings.imagefield_crop[id].minimum.width, Drupal.settings.imagefield_crop[id].minimum.height], 
           /*
            * Setting the select here calls onChange event, and we lose the original image visibility
           */
