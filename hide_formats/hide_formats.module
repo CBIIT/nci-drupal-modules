@@ -1,9 +1,11 @@
 <?php
+
 /**
  * @file
- * Provides permissions to show/hide the input formats dropdown
+ * Provides permissions to show/hide the input formats dropdown.
  *
- * Credits go to D6 verson of http://drupal.org/project/better_formats for the hiding solution
+ * Credits go to D6 verson of http://drupal.org/project/better_formats for
+ * the hiding solution.
  */
 
 /**
@@ -13,7 +15,9 @@ function hide_formats_permission() {
   return array(
     'show text format dropdown' => array(
       'title' => t('Show text format dropdown'),
-      'description' => t('Show the text format dropdowns where more than one text format is available. If a user does not have this permission then the text format dropdown will be displayed in a collapsed fieldset.'),
+      'description' => t('Show the text format dropdowns where more than one
+      text format is available. If a user does not have this permission then the
+      text format dropdown will be displayed in a collapsed fieldset.'),
     ),
   );
 }
@@ -21,23 +25,22 @@ function hide_formats_permission() {
 /**
  * Implements hook_element_info_alter().
  *
- * We are using the implementation of better_formats module to intercept the display of input formats and
- * display this with our own function
- *
+ * We are using the implementation of better_formats module to intercept the
+ * display of input formats and display this with our own function.
  */
 function hide_formats_element_info_alter(&$type) {
   // Change text format processing on elements to our version.
   if (isset($type['text_format']['#process'])) {
     foreach ($type['text_format']['#process'] as &$callback) {
       if ($callback === 'filter_process_format') {
-      $callback = 'hide_formats_filter_process_format';
+        $callback = 'hide_formats_filter_process_format';
       }
     }
   }
 }
 
-/*
- * Started as a direct copy of filter_process_format from core filter.module
+/**
+ * Started as a direct copy of filter_process_format from core filter module.
  */
 function hide_formats_filter_process_format($element) {
   global $user;
@@ -89,11 +92,12 @@ function hide_formats_filter_process_format($element) {
    * Add custom display.
    */
   if (user_access('show text format dropdown')) {
-    $element['format']['#title'] = "Text formats options";  // Title is needed in our theme or you can't expand the fieldset
+    // Title is needed in our theme or you can't expand the fieldset.
+    $element['format']['#title'] = t("Text formats options");
     $element['format']['#collapsible'] = TRUE;
     $element['format']['#collapsed'] = TRUE;
 
-    // Add custom CSS to fix overlap in fieldsets for seven theme. #17892227
+    // Add custom CSS to fix overlap in fieldsets for seven theme #17892227.
     global $theme;
     if ($theme == 'seven') {
       $custom_css = 'fieldset.filter-wrapper { padding-bottom: 20px;} fieldset.filter-wrapper div.fieldset-wrapper { padding-top: 20px;}';
@@ -154,9 +158,10 @@ function hide_formats_filter_process_format($element) {
     // the user only has access to a single format).
     $element['format']['format']['#access'] = TRUE;
   }
-  // Disable this widget, if the fieldset .fieldset-wrapperuser is not allowed to use the stored format,
-  // or if the stored format does not exist. The 'administer filters' permission
-  // only grants access to the filter administration, not to all formats.
+  // Disable this widget, if the fieldset .fieldset-wrapperuser is not allowed
+  // to use the stored format, or if the stored format does not exist.
+  // The 'administer filters' permission only grants access to the filter
+  // administration, not to all formats.
   elseif (!$user_has_access || !$format_exists) {
     // Overload default values into #value to make them unalterable.
     $element['value']['#value'] = $element['value']['#default_value'];
