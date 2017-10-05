@@ -387,7 +387,9 @@ function &rules_get_cache($cid = 'data') {
       }
       elseif (strpos($cid, 'event_') === 0 || $cid == 'rules_event_whitelist') {
         $cache[$cid] = FALSE;
-        RulesEventSet::rebuildEventCache();
+        if (class_exists('RulesEventSet')) {
+          RulesEventSet::rebuildEventCache();
+        }
       }
       else {
         $cache[$cid] = FALSE;

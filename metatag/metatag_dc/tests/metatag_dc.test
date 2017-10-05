@@ -1,8 +1,9 @@
 <?php
-
 /**
+ * @file
  * Tests for the Metatag DC module.
  */
+
 class MetatagDcTest extends MetatagTestHelper {
 
   /**

@@ -1544,15 +1544,9 @@ class views_join {
 
     // Tack on the extra.
     if (isset($this->extra)) {
-      // If extra has been provided as string instead of an array, convert it
-      // to an array.
-      if (!is_array($this->extra)) {
-        $this->extra = array($this->extra);
-      }
-
-      $extras = array();
-      foreach ($this->extra as $info) {
-        if (is_array($info)) {
+      if (is_array($this->extra)) {
+        $extras = array();
+        foreach ($this->extra as $info) {
           $extra = '';
           // Figure out the table name. Remember, only use aliases provided
           // if at all possible.
@@ -1602,18 +1596,18 @@ class views_join {
           }
           $extras[] = "$join_table$info[field] $operator $placeholder";
         }
-        elseif (is_string($info)) {
-          $extras[] = $info;
+
+        if ($extras) {
+          if (count($extras) == 1) {
+            $condition .= ' AND ' . array_shift($extras);
+          }
+          else {
+            $condition .= ' AND (' . implode(' ' . $this->extra_type . ' ', $extras) . ')';
+          }
         }
       }
-
-      if ($extras) {
-        if (count($extras) == 1) {
-          $condition .= ' AND ' . array_shift($extras);
-        }
-        else {
-          $condition .= ' AND (' . implode(' ' . $this->extra_type . ' ', $extras) . ')';
-        }
+      elseif ($this->extra && is_string($this->extra)) {
+        $condition .= " AND ($this->extra)";
       }
     }
 
@@ -1661,18 +1655,11 @@ class views_join_subquery extends views_join {
     $arguments = array();
 
     // Tack on the extra.
-    // This is just copied verbatim from the parent class, which itself has a
-    // bug: http://drupal.org/node/1118100
+    // This is just copied verbatim from the parent class, which itself has a bug: http://drupal.org/node/1118100
     if (isset($this->extra)) {
-      // If extra has been provided as string instead of an array, convert it
-      // to an array.
-      if (!is_array($this->extra)) {
-        $this->extra = array($this->extra);
-      }
-
-      $extras = array();
-      foreach ($this->extra as $info) {
-        if (is_array($info)) {
+      if (is_array($this->extra)) {
+        $extras = array();
+        foreach ($this->extra as $info) {
           $extra = '';
           // Figure out the table name. Remember, only use aliases provided
           // if at all possible.
@@ -1701,18 +1688,18 @@ class views_join_subquery extends views_join {
           $extras[] = "$join_table$info[field] $operator $placeholder";
           $arguments[$placeholder] = $info['value'];
         }
-        elseif (is_string($info)) {
-          $extras[] = $info;
+
+        if ($extras) {
+          if (count($extras) == 1) {
+            $condition .= ' AND ' . array_shift($extras);
+          }
+          else {
+            $condition .= ' AND (' . implode(' ' . $this->extra_type . ' ', $extras) . ')';
+          }
         }
       }
-
-      if ($extras) {
-        if (count($extras) == 1) {
-          $condition .= ' AND ' . array_shift($extras);
-        }
-        else {
-          $condition .= ' AND (' . implode(' ' . $this->extra_type . ' ', $extras) . ')';
-        }
+      elseif ($this->extra && is_string($this->extra)) {
+        $condition .= " AND ($this->extra)";
       }
     }
 

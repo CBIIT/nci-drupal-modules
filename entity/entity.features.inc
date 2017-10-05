@@ -91,7 +91,6 @@ class EntityDefaultFeaturesController {
           $fields = field_info_instances($this->info['bundle of'], $entity->{$this->bundleKey});
           foreach ($fields as $name => $field) {
             $pipe['field'][] = "{$field['entity_type']}-{$field['bundle']}-{$field['field_name']}";
-            $pipe['field_instance'][] = "{$field['entity_type']}-{$field['bundle']}-{$field['field_name']}";
           }
         }
       }
@@ -132,7 +131,9 @@ class EntityDefaultFeaturesController {
    */
   function revert($module = NULL) {
     if ($defaults = features_get_default($this->type, $module)) {
-      entity_delete_multiple($this->type, array_keys($defaults));
+      foreach ($defaults as $name => $entity) {
+        entity_delete($this->type, $name);
+      }
     }
   }
 }

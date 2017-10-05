@@ -19,14 +19,14 @@ function metatag_token_info() {
 
   foreach ($metatag_info['tags'] as $value) {
     if (isset($value['group'], $metatag_info['groups'][$value['group']], $metatag_info['groups'][$value['group']]['label'])) {
-      $label = $metatag_info['groups'][$value['group']]['label'] . ': ' . $value['label'];
+      $label = t($metatag_info['groups'][$value['group']]['label']) . ': ' . t($value['label']);
     }
     else {
-      $label = t('Basic tags') . ': ' . $value['label'];
+      $label = t('Basic tags') . ': ' . t($value['label']);
     }
     $info['tokens']['metatag'][$value['name']] = array(
       'name' => $label,
-      'description' => $value['description'],
+      'description' => t($value['description']),
     );
   }
 
@@ -77,7 +77,7 @@ function metatag_tokens($type, $tokens, array $data = array(), array $options = 
   if ($type == 'metatag' && !empty($data['metatag'])) {
     $metatag = $data['metatag'];
     foreach ($tokens as $name => $original) {
-      if (isset($metatag[$name])) {
+      if(isset($metatag[$name])){
         $replacements[$original] = $sanitize ? filter_xss($metatag[$name]) : $metatag[$name];
       }
     }

@@ -11,10 +11,7 @@ that is used within social networks when visitors link to your site,
 particularly the Open Graph submodule for use with Facebook, Pinterest,
 LinkedIn, etc (see below).
 
-This version of the module only works with Drupal 7.40 and newer.
-
-For additional information, see the online documentation:
-  https://www.drupal.org/docs/7/modules/metatag
+This version of the module only works with Drupal 7.28 and newer.
 
 
 Features
@@ -90,9 +87,6 @@ The primary features include:
 
 * The hreflang meta tags are available via the Metatag:hreflang submodule.
 
-* Support for meta tags specific to Google Custom Search Appliance are available
-  in the "Metatag: Google Custom Search Engine (CSE)" submodule.
-
 * A variety of favicon sizes and styles can be added to the global configuration
   using the Metatag: Favicons submodule.
 
@@ -110,9 +104,8 @@ The primary features include:
 * Integrates with Devel_Generate, part of the Devel module, to automatically
   generate meta tags for generated nodes, via the Metatag:Devel submodule.
 
-* Integrates with Workbench Moderation (v1) allowing meta tags on nodes to be
-  managed through the workflow process; this custom support is not needed in
-  Workbench Moderation v3 so the extra logic is automatically ignored.
+* Integrates with Workbench Moderation (both v1 and v2) allowing meta tags on
+  nodes to be managed through the workflow process.
 
 * The Transliteration module (see below) is highly recommended when using image
   meta tags, e.g. og:image, to ensure that filenames are HTML-safe.
@@ -300,10 +293,7 @@ Troubleshooting / known issues
 * Versions of Drupal older than v7.17 were missing necessary functionality for
   taxonomy term pages to work correctly.
 * Using Metatag with values assigned for the page title and the Page Title
-  module simultaneously can cause conflicts and unexpected results. It is
-  strongly recommended to convert the Page Title settings to Metatag and just
-  uninstall Page Title entirely. See https://www.drupal.org/node/2774833 for
-  further details.
+  module simultaneously can cause conflicts and unexpected results.
 * When customizing the meta tags for user pages, it is strongly recommended to
   not use the [current-user] tokens, these pertain to the person *viewing* the
   page and not e.g., the person who authored a page.
@@ -321,10 +311,6 @@ Troubleshooting / known issues
   recommended to disable the "Force language neutral aliases" setting on the
   Admin Language settings page, i.e. set the "admin_language_force_neutral"
   variable to FALSE. Failing to do so can lead to data loss in Metatag.
-* If Entity Token is installed (a dependency for Rules, Commerce and others) it
-  is possible that the token browser may not work correctly and may either
-  timeout or give an error instead of a browsable list of tokens. This is a
-  limitation of the token browser.
 
 
 Related modules
@@ -373,18 +359,13 @@ functionality:
   with meta tags that only allow for one item but which are assigned from fields
   which accept multiple items, e.g. og:audio and og:video.
 
-* Real-time SEO for Drupal
+* Yoast SEO
   https://www.drupal.org/project/yoast_seo
-  Uses the YoastSEO.js library and service (https://yoast.com/) to provide
-  realtime feedback on the meta tags.
+  Adds integration with the Yoast service (https://yoast.com/).
 
 * Parse.ly Publishing Analytics
   https://www.drupal.org/project/parsely
   Automatically generates meta tags for the Parse.ly service.
-
-* Metatag Cxense
-  https://www.drupal.org/project/metatag_cxense
-  Adds support for the Cxense meta tags used by their DMP and Insight services.
 
 
 Credits / contact
@@ -404,7 +385,7 @@ References
 --------------------------------------------------------------------------------
 1: https://www.drupal.org/u/damienmckenna
 2: https://www.drupal.org/u/dave-reid
-3: https://www.mediacurrent.com/
-4: https://www.lullabot.com/
-5: https://www.acquia.com/
-6: https://www.palantir.net/
+3: http://www.mediacurrent.com/
+4: http://www.lullabot.com/
+5: http://www.acquia.com/
+6: http://www.palantir.net/

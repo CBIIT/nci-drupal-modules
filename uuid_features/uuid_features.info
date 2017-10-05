@@ -8,9 +8,9 @@ package = Features
 
 configure = admin/structure/features/uuid_features
 
-; Information added by Drupal.org packaging script on 2017-02-04
-version = "7.x-1.0-rc1"
+; Information added by Drupal.org packaging script on 2015-11-16
+version = "7.x-1.0-alpha4+78-dev"
 core = "7.x"
 project = "uuid_features"
-datestamp = "1486189087"
+datestamp = "1447661660"
 

@@ -121,17 +121,6 @@ function maillog_maillog_page($maillog) {
 function maillog_admin_settings() {
   $form = array();
 
-  $form['clear_maillog'] = array(
-    '#type' => 'fieldset',
-    '#title' => t('Clear Maillog'),
-  );
-
-  $form['clear_maillog']['clear'] = array(
-    '#type' => 'submit',
-    '#value' => t('Clear all maillog entries'),
-    '#submit' => array('maillog_clear_log'),
-  );
-
   $form['maillog_send'] = array(
     '#type' => 'checkbox',
     '#title' => t("Allow the e-mails to be sent."),
@@ -171,11 +160,6 @@ function maillog_views_api() {
     'api' => 3,
     'path' => drupal_get_path('module', 'maillog') . '/includes/',
   );
-}
-
-function maillog_clear_log() {
-  db_truncate('maillog')->execute();
-  drupal_set_message(t("All maillog entries deleted."));
 }
 
 /**

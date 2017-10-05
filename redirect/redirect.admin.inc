@@ -493,10 +493,6 @@ function redirect_element_validate_redirect($element, &$form_state) {
 
 /**
  * Extract the query and fragment parts out of an URL field.
- *
- * The "url" parameter of the returning array can be:
- *   - a raw URL, if the URL is absolute
- *   - an internal Drupal path (URL-decoded)
  */
 function _redirect_extract_url_options(&$element, &$form_state) {
   $value = &$element['#value'];
@@ -527,7 +523,7 @@ function _redirect_extract_url_options(&$element, &$form_state) {
   }
 
   if (!url_is_external($parsed['url'])) {
-    $parsed['url'] = drupal_get_normal_path(rawurldecode($parsed['url']), $form_state['values']['language']);
+    $parsed['url'] = drupal_get_normal_path($parsed['url'], $form_state['values']['language']);
   }
 
   form_set_value($element, $parsed['url'], $form_state);

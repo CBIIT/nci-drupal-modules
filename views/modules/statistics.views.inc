@@ -32,7 +32,7 @@ function statistics_views_data() {
     'help' => t('The total number of times the node has been viewed.'),
 
     'field' => array(
-      'handler' => 'views_handler_field_statistics_numeric',
+      'handler' => 'views_handler_field_numeric',
       'click sortable' => TRUE,
      ),
     'filter' => array(
@@ -49,7 +49,7 @@ function statistics_views_data() {
     'help' => t('The total number of times the node has been viewed today.'),
 
     'field' => array(
-      'handler' => 'views_handler_field_statistics_numeric',
+      'handler' => 'views_handler_field_numeric',
       'click sortable' => TRUE,
      ),
     'filter' => array(
@@ -66,7 +66,7 @@ function statistics_views_data() {
     'help' => t('The most recent time the node has been viewed.'),
 
     'field' => array(
-      'handler' => 'views_handler_field_node_counter_timestamp',
+      'handler' => 'views_handler_field_date',
       'click sortable' => TRUE,
     ),
     'filter' => array(
