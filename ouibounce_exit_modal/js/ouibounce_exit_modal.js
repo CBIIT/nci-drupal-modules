@@ -24,6 +24,7 @@ var ouibounceExitModal = ouibounceExitModal || {};
 
         $('body').on('click', function () {
           $('#ouibounce-exit-modal').hide();
+          $.cookie('viewedOuibounceModal', null);
         });
 
         $('#ouibounce-exit-modal .modal-footer').on('click', function () {
