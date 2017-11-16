@@ -27,7 +27,7 @@ var ouibounceExitModal = ouibounceExitModal || {};
           $.cookie('viewedOuibounceModal', null);
         });
 
-        $('#ouibounce-exit-modal .modal-footer').on('click', function () {
+        $('#ouibounce-exit-modal .no-thanks').on('click', function () {
           $('#ouibounce-exit-modal').hide();
         });
 
