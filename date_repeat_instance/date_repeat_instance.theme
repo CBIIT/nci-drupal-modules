@@ -1,0 +1,34 @@
+<?php
+
+/**
+ * Date theme wrapper function to add edit and delete links.
+ */
+function theme_date_repeat_instance_wrapper($function, $vars) {
+  // Render using Date's theme function.
+  module_load_include('theme', 'date', 'date');
+  $output = $function($vars);
+
+  // Add edit and delete links.
+  if (date_repeat_instance_access('update', $vars['entity'], $vars['field']['field_name'], $vars['langcode'], $vars['delta'])) {
+    $output .= ' - '. l('edit', "node/{$vars['entity']->nid}/date_repeat_instance_edit/{$vars['field']['field_name']}/{$vars['langcode']}/{$vars['delta']}");
+  }
+  if (date_repeat_instance_access('delete', $vars['entity'], $vars['field']['field_name'], $vars['langcode'], $vars['delta'])) {
+    $output .= ' - '. l('delete', "node/{$vars['entity']->nid}/date_repeat_instance_delete/{$vars['field']['field_name']}/{$vars['langcode']}/{$vars['delta']}", array('query' => drupal_get_destination()));
+  }
+
+  return '<div class="date-repeat-instance">'. $output .'</div>';
+}
+
+/**
+ * Override of Date's theme_date_display_combination() function.
+ */
+function theme_date_repeat_instance_date_display_combination($vars) {
+  return theme_date_repeat_instance_wrapper('theme_date_display_combination', $vars);
+}
+
+/**
+ * Override of Date's theme_date_display_interval() function.
+ */
+function theme_date_repeat_instance_date_display_interval($vars) {
+  return theme_date_repeat_instance_wrapper('theme_date_display_interval', $vars);
+}

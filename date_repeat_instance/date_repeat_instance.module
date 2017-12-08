@@ -1,0 +1,117 @@
+<?php
+
+/**
+ * Implements hook_menu().
+ */
+function date_repeat_instance_menu() {
+  $items['node/%node/date_repeat_instance_edit/%/%/%'] = array(
+    'type' => MENU_CALLBACK,
+    'page callback' => 'date_repeat_instance_edit',
+    'page arguments' => array(1, 3, 4, 5),
+    'access callback' => 'date_repeat_instance_access',
+    'access arguments' => array('update', 1, 3, 4, 5),
+    'file' => 'date_repeat_instance.pages.inc',
+  );
+  $items['node/%node/date_repeat_instance_delete/%/%/%'] = array(
+    'type' => MENU_CALLBACK,
+    'page callback' => 'drupal_get_form',
+    'page arguments' => array('date_repeat_instance_delete_confirm', 1, 3, 4, 5),
+    'access callback' => 'date_repeat_instance_access',
+    'access arguments' => array('delete', 1, 3, 4, 5),
+    'file' => 'date_repeat_instance.pages.inc',
+  );
+  return $items;
+}
+
+/**
+ * Determines if an entity has an instance which can be detached.
+ * 
+ * The entity's field must have at least one "repeat" (at least two dates), and
+ * the specified field instance ($delta) must contain a repeating rule.
+ * Plus, the user must be able to perform the update or delete action.
+ */
+function date_repeat_instance_access($op, $entity, $field_name, $langcode, $delta) {
+  if (date_is_repeat_field($field_name) && !empty($entity->{$field_name}[$langcode][$delta]['rrule']) && count($entity->{$field_name}[$langcode]) > 1) {
+    return node_access($op, $entity);
+  }
+}
+
+/**
+ * Implements hook_help().
+ */
+function date_repeat_instance_help($path, $arg) {
+  switch ($path) {
+    case 'node/%/date_repeat_instance_edit/%/%':
+      return '<p>'. t('You are editing a date in the series. Saving this node will detach it from the repeating series. Change made here will not be reflected in the original node.') .'</p>';
+  }
+}
+
+/**
+ * Implements hook_theme_registry_alter().
+ * 
+ * Overrides Date theme functions.
+ */
+function date_repeat_instance_theme_registry_alter(&$theme_registry) {
+  $path = drupal_get_path('module', 'date_repeat_instance');
+  foreach (array('combination', 'interval') as $value) {
+    $hook = 'date_display_' . $value;
+    $theme_registry[$hook]['path'] = $path;
+    $theme_registry[$hook]['theme path'] = $path;
+    $theme_registry[$hook]['file'] = 'date_repeat_instance.theme';
+    $theme_registry[$hook]['function'] = 'theme_date_repeat_instance_' . $hook;
+    $theme_registry[$hook]['includes'][0] = $path . '/date_repeat_instance.theme';
+  }
+}
+
+/**
+ * Implements hook_node_insert().
+ * 
+ * For nodes being detached, sets a date exception in the original node.
+ */
+function date_repeat_instance_node_insert($node) {
+  if (isset($node->date_repeat_instance)) {
+    extract($node->date_repeat_instance);
+    $original_node = node_load($original_nid);
+    date_repeat_instance_set_exception($original_node, $field, $langcode, $delta);
+  }
+}
+
+/**
+ * Deletes an instance of a repeating date and adds an exception to the
+ * repeating rule for the remaining dates.
+ */
+function date_repeat_instance_set_exception($node, $field, $langcode, $delta) {
+  // Create exception date object.
+  $exception = new DateObject($node->{$field}[$langcode][$delta]['value']);
+
+  // If there are only two remaining dates in the series, then delete the
+  // repeating rule (because after we delete this date, there will be only one
+  // left).
+  if (count($node->{$field}[$langcode]) == 2) {
+    $rrule = NULL;
+  }
+  // Otherwise, build the repeating rule, adding the exception.
+  else {
+    module_load_include('inc', 'date_api', 'date_api_ical');
+    list($data, $exdate, $rdate) = date_repeat_split_rrule($node->{$field}[$langcode][$delta]['rrule']);
+    $exdate[]['datetime'] = $exception->format(DATE_FORMAT_ICAL);
+    $data['EXDATE'] = $exdate;
+    $data['RDATE'] = $rdate;
+    $rrule = date_api_ical_build_rrule($data);
+  }
+
+  // Unset this date and ensure sequential deltas.
+  unset($node->{$field}[$langcode][$delta]);
+  $node->{$field}[$langcode] = array_values($node->{$field}[$langcode]);
+
+  // Update repeating rule in remaining dates in series.
+  foreach (array_keys($node->{$field}[$langcode]) as $field_delta) {
+    $node->{$field}[$langcode][$field_delta]['rrule'] = $rrule;
+  }
+
+  // Save the node.
+  node_save($node);
+  drupal_set_message(t("!date has been removed from the repeating date series.", array(
+    '!date' => $exception->format(DATE_FORMAT_DATE),
+  )));
+}
