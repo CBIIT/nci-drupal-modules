@@ -1,0 +1,13 @@
+diff --git a/includes/entity.wrapper.inc b/includes/entity.wrapper.inc
+index d5d22ac..58fd26c 100644
+--- a/includes/entity.wrapper.inc
++++ b/includes/entity.wrapper.inc
+@@ -1037,7 +1037,7 @@ class EntityListWrapper extends EntityMetadataWrapper implements IteratorAggrega
+    */
+   public function getIterator() {
+     // In case there is no data available, just iterate over the first item.
+-    return new EntityMetadataWrapperIterator($this, $this->dataAvailable() ? array_keys(parent::value()) : array(0));
++    return new EntityMetadataWrapperIterator($this, ($this->dataAvailable() && is_array(parent::value())) ? array_keys(parent::value()) : array(0));
+   }
+ 
+   /**
