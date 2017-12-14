@@ -1,10 +1,10 @@
 <?php
-
 /**
+ * @file
  * Tests for the Metatag module to ensure image handling doesn't break.
  */
-class MetatagCoreImageTest extends MetatagTestHelper {
 
+class MetatagCoreImageTest extends MetatagTestHelper {
   /**
    * {@inheritdoc}
    */
@@ -13,7 +13,6 @@ class MetatagCoreImageTest extends MetatagTestHelper {
       'name' => 'Metatag core tests for images',
       'description' => 'Test Metatag integration with image files.',
       'group' => 'Metatag',
-      'dependencies' => array('ctools', 'token', 'devel_generate'),
     );
   }
 
@@ -21,12 +20,8 @@ class MetatagCoreImageTest extends MetatagTestHelper {
    * {@inheritdoc}
    */
   function setUp(array $modules = array()) {
-    // Needs the OpenGraph submodule because of testNodeFieldValueMultiple().
-    $modules[] = 'metatag_opengraph';
-
     // Need image handling.
     $modules[] = 'image';
-
     // Need the Devel Generate image generator.
     $modules[] = 'devel_generate';
 
@@ -51,7 +46,7 @@ class MetatagCoreImageTest extends MetatagTestHelper {
     metatag_config_save($config);
 
     // Dump out the current config, to aid with debugging.
-    $this->verbose($config);
+    $this->verbose('<pre>' . print_r($config, TRUE) . '</pre>');
 
     // Load the front page.
     $this->drupalGet('<front>');
@@ -92,7 +87,7 @@ class MetatagCoreImageTest extends MetatagTestHelper {
     metatag_config_save($config);
 
     // Dump out the current config, to aid with debugging.
-    $this->verbose($config);
+    $this->verbose('<pre>' . print_r($config, TRUE) . '</pre>');
 
     // Load the front page.
     $this->drupalGet('<front>');
@@ -133,7 +128,7 @@ class MetatagCoreImageTest extends MetatagTestHelper {
     metatag_config_save($config);
 
     // Dump out the current config, to aid with debugging.
-    $this->verbose($config);
+    $this->verbose('<pre>' . print_r($config, TRUE) . '</pre>');
 
     // Load the front page.
     $this->drupalGet('<front>');
@@ -147,40 +142,6 @@ class MetatagCoreImageTest extends MetatagTestHelper {
     // Confirm the file could be loaded.
     $this->drupalGet($xpath[0]['href']);
     $this->assertResponse(200, "The image_src meta tag's value could be loaded.");
-  }
-
-  /**
-   * Confirm that an image can be added to a global configuration using the
-   * image's protocol-relative URL.
-   */
-  function testConfigProtocolRelativeURL() {
-    // Generate a test image.
-    $image_uri = $this->generateImage();
-    $this->verbose($image_uri);
-
-    // Work out the web-accessible URL for this image.
-    $image_url = file_create_url($image_uri);
-
-    // Make the URL protocol-relative.
-    $relative_url = str_replace('http://', '//', $image_url);
-
-    // Update the global config to add an image meta tag.
-    $config = metatag_config_load('global');
-    $config->config['image_src']['value'] = $relative_url;
-    metatag_config_save($config);
-
-    // Dump out the current config, to aid with debugging.
-    $this->verbose($config);
-
-    // Load the front page.
-    $this->drupalGet('<front>');
-    $this->assertResponse(200);
-
-    // Confirm that the image_src meta tag has the expected values.
-    $xpath = $this->xpath("//link[@rel='image_src']");
-    $this->assertEqual(count($xpath), 1, 'One image_src meta tag found.');
-    $this->assertEqual($xpath[0]['href'], $relative_url, 'The image_src meta tag with a protocol-relative URL is being output correctly.');
-    $this->assertNotEqual($xpath[0]['href'], $image_url, 'The image_src meta tag does not contain the absolute URL.');
   }
 
   /**
@@ -205,7 +166,7 @@ class MetatagCoreImageTest extends MetatagTestHelper {
     metatag_config_save($config);
 
     // Dump out the current config, to aid with debugging.
-    $this->verbose($config);
+    $this->verbose('<pre>' . print_r($config, TRUE) . '</pre>');
 
     // Load the front page.
     $this->drupalGet('<front>');
@@ -256,7 +217,7 @@ class MetatagCoreImageTest extends MetatagTestHelper {
     metatag_config_save($config);
 
     // Dump out the current config, to aid with debugging.
-    $this->verbose($config);
+    $this->verbose('<pre>' . print_r($config, TRUE) . '</pre>');
 
     // Load the front page.
     $this->drupalGet('<front>');
@@ -284,7 +245,7 @@ class MetatagCoreImageTest extends MetatagTestHelper {
     $image_url = file_create_url($image->uri);
 
     // Dump out the file object, to aid with debugging.
-    $this->verbose($image);
+    $this->verbose('<pre>' . print_r($image, TRUE) . '</pre>');
 
     // Update the article-image default settings to use the new image field.
     $entity_type = 'node';
@@ -334,7 +295,7 @@ class MetatagCoreImageTest extends MetatagTestHelper {
     $image_url = file_create_url($image->uri);
 
     // Dump out the file object, to aid with debugging.
-    $this->verbose($image);
+    $this->verbose('<pre>' . print_r($image, TRUE) . '</pre>');
 
     // Create an example node.
     $args = array(
@@ -349,7 +310,7 @@ class MetatagCoreImageTest extends MetatagTestHelper {
 
     // Forcibly reload the node, to avoid working with a cached version.
     $node = node_load($node->nid, NULL, TRUE);
-    $this->verbose($node, 'Node');
+    $this->verbose('<p>Node:</p><pre>' . print_r($node, TRUE) . '</pre>');
 
     // Load the node page.
     $this->drupalGet('node/' . $node->nid);
@@ -389,8 +350,8 @@ class MetatagCoreImageTest extends MetatagTestHelper {
     $image2_url = file_create_url($image2->uri);
 
     // Dump out the file objects, to aid with debugging.
-    $this->verbose($image1, 'Image #1');
-    $this->verbose($image2, 'Image #2');
+    $this->verbose('<p>Image #1</p><pre>' . print_r($image1, TRUE) . '</pre>');
+    $this->verbose('<p>Image #2</p><pre>' . print_r($image2, TRUE) . '</pre>');
 
     // Create an example node.
     $args = array(
@@ -406,7 +367,7 @@ class MetatagCoreImageTest extends MetatagTestHelper {
 
     // Forcibly reload the node, to avoid working with a cached version.
     $node = node_load($node->nid, NULL, TRUE);
-    $this->verbose($node, 'Node');
+    $this->verbose('<p>Node:</p><pre>' . print_r($node, TRUE) . '</pre>');
 
     // Load the node page.
     $this->drupalGet('node/' . $node->nid);
@@ -448,8 +409,8 @@ class MetatagCoreImageTest extends MetatagTestHelper {
     $image2_url = file_create_url($image2->uri);
 
     // Dump out the file objects, to aid with debugging.
-    $this->verbose($image1, 'Image #1');
-    $this->verbose($image2, 'Image #2');
+    $this->verbose('<p>Image #1</p><pre>' . print_r($image1, TRUE) . '</pre>');
+    $this->verbose('<p>Image #2</p><pre>' . print_r($image2, TRUE) . '</pre>');
 
     // Create an example node.
     $args = array(
@@ -465,7 +426,7 @@ class MetatagCoreImageTest extends MetatagTestHelper {
 
     // Forcibly reload the node, to avoid working with a cached version.
     $node = node_load($node->nid, NULL, TRUE);
-    $this->verbose($node, 'Node');
+    $this->verbose('<p>Node:</p><pre>' . print_r($node, TRUE) . '</pre>');
 
     // Load the node page.
     $this->drupalGet('node/' . $node->nid);

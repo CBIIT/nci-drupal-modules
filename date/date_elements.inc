@@ -337,11 +337,8 @@ function date_combo_element_process($element, &$form_state, $form) {
     '#date_label_position' => $instance['widget']['settings']['label_position'],
   );
 
-  // Date repeat is a multiple value field. So the description is removed from
-  // the single element earlier. Let's get it back.
-  if (isset($element['show_repeat_settings']) && !empty($element['value']['#instance']['description'])) {
-    $element['#description'] = $element['value']['#instance']['description'];
-  }
+  $description = !empty($element['#description']) ? t($element['#description']) : '';
+  unset($element['#description']);
 
   // Give this element the right type, using a Date API
   // or a Date Popup element type.
@@ -386,7 +383,8 @@ function date_combo_element_process($element, &$form_state, $form) {
     $element[$to_field]['#prefix'] = '';
     // Users with JS enabled will never see initially blank values for the end
     // date (see Drupal.date.EndDateHandler()), so hide the message for them.
-    $element['#description'] .= '<span class="js-hide"> ' . t("Empty 'End date' values will use the 'Start date' values.") . '</span>';
+    $description .= '<span class="js-hide"> ' . t("Empty 'End date' values will use the 'Start date' values.") . '</span>';
+    $element['#fieldset_description'] = $description;
     if ($field['settings']['todate'] == 'optional') {
       $element[$to_field]['#states'] = array(
         'visible' => array(
@@ -396,6 +394,9 @@ function date_combo_element_process($element, &$form_state, $form) {
         ),
       );
     }
+  }
+  else {
+    $element[$from_field]['#description'] = $description;
   }
 
   // Create label for error messages that make sense in multiple values
@@ -473,12 +474,6 @@ function date_combo_validate($element, &$form_state) {
   $form_values = drupal_array_get_nested_value($form_state['values'], $element['#field_parents']);
   $form_input = drupal_array_get_nested_value($form_state['input'], $element['#field_parents']);
 
-  // Programmatically calling drupal_submit_form() does not always add the date
-  // combo to $form_state['input'].
-  if (empty($form_input[$field_name]) && !empty($form_values[$field_name])) {
-    form_set_value($element, $element['#date_items'], $form_state);
-    return;
-  }
   // If the whole field is empty and that's OK, stop now.
   if (empty($form_input[$field_name]) && !$element['#required']) {
     return;
@@ -551,7 +546,11 @@ function date_combo_validate($element, &$form_state) {
       return;
     }
   }
-  else {
+  // Don't look for further errors if errors are already flagged
+  // because otherwise we'll show errors on the nested elements
+  // more than once.
+  elseif (!form_get_errors()) {
+
     $timezone = !empty($item[$tz_field]) ? $item[$tz_field] : $element['#date_timezone'];
     $timezone_db = date_get_timezone_db($field['settings']['tz_handling']);
     $element[$from_field]['#date_timezone'] = $timezone;
@@ -590,6 +589,13 @@ function date_combo_validate($element, &$form_state) {
       drupal_alter('date_combo_validate_date_start', $from_date, $form_state, $context);
       drupal_alter('date_combo_validate_date_end', $to_date, $form_state, $context);
 
+      if(!($from_date instanceOf DateTime)) {
+        $from_date = new DateTime($from_date);
+      }
+      if(!($to_date instanceOf DateTime)) {
+        $to_date = new DateTime($to_date);
+      }
+
       $item[$offset_field] = date_offset_get($from_date);
 
       $test_from = date_format($from_date, 'r');
@@ -626,10 +632,7 @@ function date_combo_validate($element, &$form_state) {
       }
     }
   }
-  // Don't show further errors if errors are already flagged
-  // because otherwise we'll show errors on the nested elements
-  // more than once.
-  if (!form_get_errors() && !empty($errors)) {
+  if (!empty($errors)) {
     if ($field['cardinality']) {
       form_error($element, t('There are errors in @field_name value #@delta:', array('@field_name' => $instance['label'], '@delta' => $delta + 1)) . theme('item_list', array('items' => $errors)));
     }

@@ -1,8 +1,9 @@
 <?php
-
 /**
+ * @file
  * Tests for the Metatag Facebook module.
  */
+
 class MetatagFacebookTest extends MetatagTestHelper {
 
   /**

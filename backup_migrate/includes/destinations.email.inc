@@ -93,7 +93,7 @@ class mime_mail {
   var $subject;
   var $body;
 
-  function __construct() {
+  function mime_mail() {
     $this->parts   = array();
     $this->to      = "";
     $this->from    = "";

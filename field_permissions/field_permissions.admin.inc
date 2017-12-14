@@ -8,13 +8,13 @@
 /**
  * Obtain the list of field permissions.
  *
- * @param string $field_label
+ * @param $field_label
  *   The human readable name of the field to use when constructing permission
  *   names. Usually this will be derived from one or more of the field instance
  *   labels.
  */
 function field_permissions_list($field_label = '') {
-  $permissions = array(
+  return array(
     'create' => array(
       'label' => t('Create field'),
       'title' => t('Create own value for field %field', array('%field' => $field_label)),
@@ -36,47 +36,46 @@ function field_permissions_list($field_label = '') {
       'title' => t("View anyone's value for field %field", array('%field' => $field_label)),
     ),
   );
-
-  drupal_alter('field_permissions_list', $permissions, $field_label);
-
-  return $permissions;
 }
 
 /**
  * Returns field permissions in a format suitable for use in hook_permission().
  *
- * @param array $field
+ * @param $field
  *   The field to return permissions for.
- * @param mixed $label
+ * @param $label
  *   (optional) The human readable name of the field to use when constructing
  *   permission names; for example, this might be the label of one of the
  *   corresponding field instances. If not provided, an appropriate label will
  *   be automatically derived from all the field's instances.
  *
- * @return array
+ * @return
  *   An array of permission information, suitable for use in hook_permission().
  */
 function field_permissions_list_field_permissions($field, $label = NULL) {
-  if (!isset($label)) {
-    $label = $field['field_name'];
-  }
-  $instances = array();
   $description = '';
-  foreach ($field['bundles'] as $entity_type => $bundles) {
-    foreach ($bundles as $bundle_name) {
-      $instance = field_info_instance($entity_type, $field['field_name'], $bundle_name);
-      $entity = entity_get_info($entity_type);
-      if (!isset($entity['bundles'][$bundle_name])) {
-        continue;
+
+  // If there is no preferred label, construct one from all the instance
+  // labels.
+  if (!isset($label)) {
+    $labels = array();
+    foreach ($field['bundles'] as $entity_type => $bundles) {
+      foreach ($bundles as $bundle_name) {
+        $instance = field_info_instance($entity_type, $field['field_name'], $bundle_name);
+        $labels[] = $instance['label'];
       }
-      $instance_desc_tokens = array(
-        $entity['label'],
-        $entity['bundles'][$bundle_name]['label'],
-        $instance['label'],
-      );
-      $instances[] = '"' . implode(':', $instance_desc_tokens) . '"';
     }
-    $description = t('This field appears as: %instances.', array('%instances' => implode(', ', $instances)));
+    // If all the instances have the same label, just use that. Otherwise, use
+    // the field name (with the full list of instance labels as the permission
+    // description).
+    $labels = array_unique($labels);
+    if (count($labels) == 1) {
+      $label = array_shift($labels);
+    }
+    else {
+      $label = $field['field_name'];
+      $description = t('This field appears as: %instances', array('%instances' => implode(', ', $labels)));
+    }
   }
 
   $permissions = array();
@@ -92,7 +91,7 @@ function field_permissions_list_field_permissions($field, $label = NULL) {
 }
 
 /**
- * Implements hook_permission().
+ * Implementation of hook_permission().
  */
 function _field_permissions_permission() {
   $perms = array(
@@ -146,29 +145,14 @@ function _field_permissions_field_settings_form_alter(&$form, $form_state, $form
     '#type' => 'container',
     '#states' => array(
       'visible' => array(
-        ':input[name="field[field_permissions][type]"]' => array('value' => FIELD_PERMISSIONS_CUSTOM),
+        // We must cast this to a string until http://drupal.org/node/879580 is
+        // fixed.
+        ':input[name="field[field_permissions][type]"]' => array('value' => (string) FIELD_PERMISSIONS_CUSTOM),
       ),
     ),
     // Custom styling for the permissions matrix on the field settings page.
     '#attached' => array(
       'css' => array(drupal_get_path('module', 'field_permissions') . '/field_permissions.admin.css'),
-    ),
-  );
-
-  $form['field']['field_permissions']['permission_warning'] = array(
-    '#type' => 'item',
-    '#markup' => '<div class="messages error"><b>'
-    . t('Field permissions error')
-    . '</b><br />'
-    . t('If you are seeing this message and are not seeing a table of permissions, something is wrong! See !link for more information.', array(
-      '!link' => l(t('the Field Permission documentation'), 'https://www.drupal.org/node/2802067#known-issues', array(
-        'attributes' => array('target' => '_blank'),
-      )),
-    )) . '</div>',
-    '#states' => array(
-      'visible' => array(
-        ':input[name="field[field_permissions][type]"]' => array('value' => FIELD_PERMISSIONS_CUSTOM),
-      ),
     ),
   );
 
@@ -199,15 +183,15 @@ function _field_permissions_field_settings_form_alter(&$form, $form_state, $form
  * to actually be saved. For an example submit handler, see
  * _field_permissions_field_settings_form_submit().
  *
- * @param array $field
+ * @param $field
  *   The field whose permissions will be displayed in the matrix.
- * @param array $instance
+ * @param $instance
  *   The field instance for which the permissions will be displayed. Although
  *   the permissions are per-field rather than per-instance, the instance label
  *   will be used to display an appropriate human-readable name for each
  *   permission.
  *
- * @return array
+ * @return
  *   A form array defining the permissions matrix.
  *
  * @see user_admin_permissions()
@@ -343,52 +327,37 @@ function _field_permissions_field_settings_form_submit($form, &$form_state) {
  * Menu callback; Field permissions overview.
  */
 function field_permissions_overview() {
-  drupal_add_css(drupal_get_path('module', 'field_permissions') . '/field_permissions.admin.css');
+  drupal_add_css(drupal_get_path('module', 'field_permissions') .'/field_permissions.admin.css');
 
-  $headers = array(
-    t('Field name'),
-    t('Field type'),
-    t('Entity type'),
-    t('Used in'),
-  );
+  $headers = array(t('Field name'), t('Field type'), t('Entity type'), t('Used in'));
   foreach (field_permissions_list() as $permission_type => $permission_info) {
     $headers[] = array('data' => $permission_info['label'], 'class' => 'field-permissions-header');
   }
   $destination = drupal_get_destination();
 
-  // Load list of fields, field types and bundles in the system.
+  // Load list of field instances, types and bundles in the system.
+  $instances = field_info_instances();
   $field_types = field_info_field_types();
-  $bundles_info = field_info_bundles();
+  $bundles = field_info_bundles();
 
   // Retrieve the permissions for each role.
   $role_permissions = user_role_permissions(user_roles());
 
   // Based on field_ui_fields_list() in field_ui.admin.inc.
   $rows = array();
-  foreach (field_info_fields() as $field_name => $field) {
-    foreach ($field['bundles'] as $entity_type => $bundles) {
-      foreach ($bundles as $bundle) {
-        // Some fields might belong to bundles that are disabled (which are not
-        // returned by field_info_bundles()).
-        // @see https://www.drupal.org/node/1351506
-        if (!isset($bundles_info[$entity_type][$bundle])) {
-          continue;
-        }
+  foreach ($instances as $obj_type => $type_bundles) {
+    foreach ($type_bundles as $bundle => $bundle_instances) {
+      foreach ($bundle_instances as $field_name => $instance) {
         // Each field will have a row in the table.
-        if (module_exists('field_ui')) {
-          $admin_path = _field_ui_bundle_admin_path($entity_type, $bundle);
-          $field_admin_path = l($bundles_info[$entity_type][$bundle]['label'], $admin_path . '/fields/' . $field_name, array(
-            'query' => $destination,
-            'fragment' => 'edit-field-field-permissions-type',
-          ));
-        }
-        else {
-          $field_admin_path = $bundles_info[$entity_type][$bundle]['label'];
-        }
+        $field = field_info_field($field_name);
+        $admin_path = _field_ui_bundle_admin_path($obj_type, $bundle);
         $rows[$field_name]['data'][0] = $field['locked'] ? t('@field_name (Locked)', array('@field_name' => $field_name)) : $field_name;
-        $rows[$field_name]['data'][1] = $field_types[$field['type']]['label'];
-        $rows[$field_name]['data'][2] = $entity_type;
-        $rows[$field_name]['data'][3][] = $field_admin_path;
+        $rows[$field_name]['data'][1] = t($field_types[$field['type']]['label']);
+        $rows[$field_name]['data'][2] = $obj_type;
+        $rows[$field_name]['data'][3][] = l($bundles[$obj_type][$bundle]['label'], $admin_path . '/fields/'. $field_name, array(
+          'query' => $destination,
+          'fragment' => 'edit-field-field-permissions-type',
+        ));
         $rows[$field_name]['class'] = $field['locked'] ? array('menu-disabled') : array('');
 
         // Append field permissions information to the report.
@@ -412,7 +381,7 @@ function field_permissions_overview() {
             $all_users_have_access = isset($role_permissions[DRUPAL_ANONYMOUS_RID][$permission]) && isset($role_permissions[DRUPAL_AUTHENTICATED_RID][$permission]);
             $status_class = $all_users_have_access ? 'field-permissions-status-on' : 'field-permissions-status-off';
             $title = $all_users_have_access ? t('All users have this permission') : t('Not all users have this permission');
-            $data = l(NULL, 'admin/people/permissions', array(
+            $data = l('', 'admin/people/permissions', array(
               'attributes' => array(
                 'class' => array('field-permissions-status', $status_class),
                 'title' => $title,
@@ -447,7 +416,7 @@ function field_permissions_overview() {
 
     // Allow external modules alter the table headers and rows.
     foreach (module_implements('field_permissions_overview_alter') as $module) {
-      $function = $module . '_field_permissions_overview_alter';
+      $function = $module .'_field_permissions_overview_alter';
       $function($headers, $rows);
     }
 

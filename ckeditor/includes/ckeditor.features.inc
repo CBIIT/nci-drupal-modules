@@ -62,7 +62,7 @@ function ckeditor_profile_features_export($data, &$export, $module_name = '') {
       }
     }
   }
-  $export['dependencies']['ckeditor'] = 'ckeditor';
+  $export['dependencies'][] = 'ckeditor';
   return $pipe;
 }
 

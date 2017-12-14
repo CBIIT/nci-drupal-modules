@@ -204,6 +204,9 @@ class ctools_context_required {
  */
 class ctools_context_optional extends ctools_context_required {
   var $required = FALSE;
+  function __construct() {
+    parent::__construct(NULL);
+  }
 
   /**
    * Add the 'empty' context which is possible for optional
@@ -676,19 +679,14 @@ function ctools_context_keyword_substitute($string, $keywords, $contexts, $conve
         }
       }
 
-      if (!isset($context_keywords[$context])) {
-        $keywords['%' . $keyword] = '%' . $keyword;
+      if (empty($context_keywords[$context]) || !empty($context_keywords[$context]->empty)) {
+        $keywords['%' . $keyword] = '';
+      }
+      else if (!empty($converter)) {
+        $keywords['%' . $keyword] = ctools_context_convert_context($context_keywords[$context], $converter, $converter_options);
       }
       else {
-        if (empty($context_keywords[$context]) || !empty($context_keywords[$context]->empty)) {
-          $keywords['%' . $keyword] = '';
-        }
-        else if (!empty($converter)) {
-          $keywords['%' . $keyword] = ctools_context_convert_context($context_keywords[$context], $converter, $converter_options);
-        }
-        else {
-          $keywords['%' . $keyword] = $context_keywords[$keyword]->title;
-        }
+        $keywords['%' . $keyword] = $context_keywords[$keyword]->title;
       }
     }
   }
@@ -1164,7 +1162,7 @@ function ctools_context_match_required_contexts($required, $contexts) {
   }
 
   foreach ($required as $r) {
-    $context = clone array_shift($contexts);
+    $context = clone(array_shift($contexts));
     $context->identifier = $r['identifier'];
     $context->page_title = isset($r['title']) ? $r['title'] : '';
     $context->keyword    = $r['keyword'];

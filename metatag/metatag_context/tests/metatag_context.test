@@ -1,10 +1,13 @@
 <?php
-
 /**
+ * @file
  * Functional tests for the Metatag:Context module.
  */
-class MetatagContextTest extends MetatagTestHelper {
 
+/**
+ * This extends the basic Metatag test class to reduce code duplication.
+ */
+class MetatagContextTest extends MetatagTestHelper {
   /**
    * {@inheritdoc}
    */
@@ -13,7 +16,6 @@ class MetatagContextTest extends MetatagTestHelper {
       'name' => 'Metatag:Context tests',
       'description' => 'Test basic Metatag:Context functionality.',
       'group' => 'Metatag',
-      'dependencies' => array('ctools', 'token', 'context'),
     );
   }
 
@@ -34,8 +36,6 @@ class MetatagContextTest extends MetatagTestHelper {
       'bypass node access',
     );
     $this->adminUser = $this->createAdminUser($perms);
-
-    // Log in the admin user.
     $this->drupalLogin($this->adminUser);
 
     // Create a content type, with underscores.

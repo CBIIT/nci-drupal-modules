@@ -213,7 +213,7 @@ class backup_file {
   /**
    * Construct a file object given a file path, or create a temp file for writing.
    */
-  function __construct($params = array()) {
+  function backup_file($params = array()) {
     if (isset($params['filepath']) && file_exists($params['filepath'])) {
       $this->set_filepath($params['filepath']);
     }

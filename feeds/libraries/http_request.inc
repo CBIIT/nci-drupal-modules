@@ -275,7 +275,21 @@ function http_request_get($url, $username = NULL, $password = NULL, $accept_inva
       return http_request_get($url, $username, $password, $accept_invalid_cert, $request_timeout);
     }
   }
-
+$user_url = "https://www.projectdatasphere.org/projectdatasphere/html/rest/NCI/users";
+$request_url = "https://www.projectdatasphere.org/projectdatasphere/html/rest/NCI/requests";
+$request_other_approved_users_url = "https://www.projectdatasphere.org/projectdatasphere/html/rest/NCI/requests/otherapprovedusers";
+if($url == $user_url){
+$pdsdata = pds_data();
+$result->data = $pdsdata['user_data'];
+}
+if($url == $request_url){
+$pdsdata = pds_data();
+$result->data = $pdsdata['request_data_result'];
+}
+if($url == $request_other_approved_users_url){
+$pdsdata = pds_data();
+$result->data = $pdsdata['request_other_approved_users'];
+}
   // Set caches.
   http_request_set_cache($url, $result);
   $download_cache[$url] = $result;

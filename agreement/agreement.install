@@ -6,37 +6,6 @@
  */
 
 /**
- * Create a default agreement based on current variables.
- *
- * @return array
- *   Agreement type.
- */
-function _agreement_default_agreement() {
-  $text = variable_get('agreement_text', array('value' => '', 'format' => filter_default_format()));
-  $default = array(
-    'name' => 'default',
-    'type' => 'Default agreement',
-    'path' => variable_get('agreement_page_url', 'agreement'),
-    'agreement' => $text['value'],
-    'settings' => array(
-      'role' => variable_get('agreement_role', 2),
-      'title' => variable_get('agreement_page_title', 'Our Agreement'),
-      'format' => $text['format'],
-      'frequency' => variable_get('agreement_frequency', 0),
-      'success' => variable_get('agreement_message_success', 'Thank you for accepting our agreement.'),
-      'failure' => variable_get('agreement_message_failure', 'You must accept our agreement to continue.'),
-      'checkbox' => variable_get('agreement_checkbox_text', 'I agree.'),
-      'submit' => variable_get('agreement_submit_text', 'Submit'),
-      'destination' => variable_get('agreement_success_destination', ''),
-      'visibility_settings' => variable_get('agreement_page_visibility_settings', 0),
-      'visibility_pages' => variable_get('agreement_page_visibility_pages', ''),
-      'email_recipient' => variable_get('agreement_email_recipient', ''),
-    ),
-  );
-  return $default;
-}
-
-/**
  * Implements hook_install().
  */
 function agreement_install() {
@@ -46,11 +15,6 @@ function agreement_install() {
   if ($n <> 1) {
     drupal_set_message(st('Could not set agreement module weight.'), 'error');
   }
-
-  // Add a default agreement.
-  $default = (object) _agreement_default_agreement();
-  $default->settings = serialize($default->settings);
-  drupal_write_record('agreement_type', $default);
 }
 
 /**
@@ -63,12 +27,6 @@ function agreement_schema() {
         'type' => 'serial',
         'unsigned' => TRUE,
         'not null' => TRUE,
-      ),
-      'type' => array(
-        'type' => 'varchar',
-        'length' => 100,
-        'not null' => TRUE,
-        'default' => 'default',
       ),
       'uid' => array(
         'type' => 'int',
@@ -92,48 +50,6 @@ function agreement_schema() {
       ),
     ),
     'primary key' => array('id'),
-    'indexes' => array(
-      'type_uid' => array('type', 'uid'),
-    ),
-  );
-
-  $schema['agreement_type'] = array(
-    'fields' => array(
-      'id' => array(
-        'type' => 'serial',
-        'unsigned' => TRUE,
-        'not null' => TRUE,
-      ),
-      'name' => array(
-        'type' => 'varchar',
-        'length' => 100,
-        'not null' => TRUE,
-      ),
-      'type' => array(
-        'type' => 'varchar',
-        'length' => 150,
-        'not null' => TRUE,
-      ),
-      'path' => array(
-        'type' => 'varchar',
-        'length' => 150,
-        'not null' => TRUE,
-      ),
-      'settings' => array(
-        'type' => 'blob',
-        'size' => 'big',
-        'not null' => TRUE,
-      ),
-      'agreement' => array(
-        'type' => 'text',
-        'not null' => FALSE,
-      ),
-    ),
-    'primary key' => array('id'),
-    'unique keys' => array(
-      'name' => array('name'),
-      'path' => array('path'),
-    ),
   );
 
   return $schema;
@@ -208,44 +124,4 @@ function agreement_update_7200() {
   $items[] = format_plural($deleted_num, 'Deleted 1 old permission', 'Deleted @count old permissions');
 
   return theme('item_list', array('items' => $items));
-}
-
-/**
- * 7201: Add a type column to {agreement} table.
- */
-function agreement_update_7201() {
-  if (!db_field_exists('agreement', 'type')) {
-    db_add_field('agreement', 'type', array(
-      'type' => 'varchar',
-      'length' => 100,
-      'not null' => TRUE,
-      'default' => 'default',
-    ));
-  }
-
-  if (!db_index_exists('agreement', 'type_uid')) {
-    db_add_index('agreement', 'type_uid', array('type', 'uid'));
-  }
-
-  if (!db_table_exists('agreement_type')) {
-    $schema = agreement_schema();
-    db_create_table('agreement_type', $schema['agreement_type']);
-  }
-
-  return t('Updated agreement schema and added agreement_type table.');
-}
-
-/**
- * 7202: Add a default agreement.
- */
-function agreement_update_7202() {
-  $default = (object) _agreement_default_agreement();
-  $default->settings = serialize($default->settings);
-  $types = agreement_type_load();
-
-  if (empty($types)) {
-    drupal_write_record('agreement_type', $default);
-  }
-
-  return t('Added default agreement type.');
 }

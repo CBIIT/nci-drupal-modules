@@ -48,10 +48,8 @@ function hook_ckeditor_plugin() {
       'path' => base_path() . drupal_get_path('module', 'my_module') . '/plugin_dir/',
       'buttons' => array(
         'button_name' => array(
-          // Path to the button icon. Relative to the plugin directory 'path' unless 'icon_path' is specified.
+          // Path to an icon relative to the plugins folder.
           'icon' => 'icon/plugin_name.png',
-          // Optional full path to the directory the icon is located in.
-          'icon_path' => base_path() . drupal_get_path('theme', 'my_theme') . '/icon_dir/',
           'label' => 'Button Label',
         )
       )
