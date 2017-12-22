@@ -50,26 +50,26 @@ function conditional_fields_features_export_render($module_name, $data, $export 
 
     if (isset($dependencies[$entity]) && isset($dependencies[$entity][$bundle])) {
       $info = $dependencies[$entity][$bundle];
-      $delta[$option] = 0;
 
       // Ensure that dependencies are always exported in the same order to
       // avoid fake overrides.
       ksort($info['dependents']);
 
+      $code[] = '';
+      $code[] = '  $items["' . $option . '"] = array(';
       foreach ($info['dependents'] as $dependent_field_name => $dependees) {
         foreach ($dependees as $dependee) {
-          $code[] = '';
-          $code[] = '  $items["' . $option . ':' . $delta[$option] . '"] = array(';
-          $code[] = "    'entity' => '" . $entity . "',";
-          $code[] = "    'bundle' => '" . $bundle . "',";
-          $code[] = "    'dependent' => '" . $dependent_field_name . "',";
-          $code[] = "    'dependee' => '" . $dependee['dependee'] . "',";
-          $code[] = "    'options' => " . features_var_export($dependee['options'], '    ') . ',';
-          $code[] = '  );';
-
-          $delta[$option]++;
+          $code[] = "    array(";
+          $code[] = "      'entity' => '" . $entity . "',";
+          $code[] = "      'bundle' => '" . $bundle . "',";
+          $code[] = "      'dependent' => '" . $dependent_field_name . "',";
+          $code[] = "      'dependee' => '" . $dependee['dependee'] . "',";
+          $code[] = "      'options' => " . features_var_export($dependee['options'], '      ') . ',';
+          $code[] = '    ),';
         }
       }
+
+      $code[] = '  );';
     }
   }
   if (empty($code)) {
@@ -93,25 +93,27 @@ function conditional_fields_features_rebuild($module) {
   if (!empty($defaults)) {
     $dependencies = conditional_fields_load_dependencies();
     $instances = field_info_instances();
-    foreach ($defaults as $field) {
-      if (isset($dependencies[$field['entity']][$field['bundle']])) {
-        foreach ($dependencies[$field['entity']][$field['bundle']] as $dependancy_type => $field_dep_settings) {
-          if ($dependancy_type == 'dependees' && !empty($field_dep_settings)) {
-            foreach ($field_dep_settings as $dep_setting) {
-              foreach ($dep_setting as $id => $dep_settings) {
-                $deps_to_remove[$id] = $id;
+    foreach ($defaults as $item) {
+      foreach($item as $field) {
+        if (isset($dependencies[$field['entity']][$field['bundle']])) {
+          foreach ($dependencies[$field['entity']][$field['bundle']] as $dependancy_type => $field_dep_settings) {
+            if ($dependancy_type == 'dependees' && !empty($field_dep_settings)) {
+              foreach ($field_dep_settings as $dep_setting) {
+                foreach ($dep_setting as $id => $dep_settings) {
+                  $deps_to_remove[$id] = $id;
+                }
               }
             }
           }
+          if (!empty($deps_to_remove)) {
+            conditional_fields_dependency_delete($deps_to_remove);
+          }
         }
-        if (!empty($deps_to_remove)) {
-          conditional_fields_dependency_delete($deps_to_remove);
-        }
+        $entity_instances = $instances[$field['entity']][$field['bundle']];
+        $dependee_id = $entity_instances[$field['dependee']]['id'];
+        $dependent_id = $entity_instances[$field['dependent']]['id'];
+        conditional_fields_dependency_insert($dependee_id, $dependent_id, $field['options']);
       }
-      $entity_instances = $instances[$field['entity']][$field['bundle']];
-      $dependee_id = $entity_instances[$field['dependee']]['id'];
-      $dependent_id = $entity_instances[$field['dependent']]['id'];
-      conditional_fields_dependency_insert($dependee_id, $dependent_id, $field['options']);
     }
   }
 }

@@ -391,7 +391,9 @@ function conditional_fields_dependency_edit_form($form, &$form_state, $dependenc
   // Build a dummy field widget to use as form field in single value selection
   // option.
   $dummy_form = array('#parents' => array());
-  $dependee_instance['default_value'] = $dependency['options']['value'];
+  if ($dependency['options']['values_set'] == CONDITIONAL_FIELDS_DEPENDENCY_VALUES_WIDGET) {
+    $dependee_instance['default_value'] = $dependency['options']['value'];
+  }
   $dependee_instance['default_value_function'] = '';
   $dependee_instance['required'] = FALSE;
 
@@ -676,7 +678,7 @@ function conditional_fields_dependency_edit_form($form, &$form_state, $dependenc
     '#type' => 'checkboxes',
     '#title' => t('View context settings for all roles'),
     '#title_display' => 'invisible',
-    '#description' => t('Note: Options that need to evaluate if the dependency is triggered only apply if the condition is "Value".'),
+    '#description' => t('Note: Options that need to evaluate if the dependency is triggered only apply if the condition is "Value", "Empty", or "Filled".'),
     '#options' => $behaviors['view'],
     '#default_value' => $dependency['options']['element_view'],
     '#states' => array(
