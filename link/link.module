@@ -444,7 +444,7 @@ function _link_validate(&$item, $delta, $field, $entity, $instance, $langcode, &
   if (!empty($entity) && $instance['settings']['url'] !== 'optional' && strlen(isset($item['title']) ? $item['title'] : NULL) > 0 && strlen(trim($item['url'])) == 0) {
     $errors[$field['field_name']][$langcode][$delta][] = array(
       'error' => 'link_required',
-      'message' => t('You cannot enter a title without a link url.'),
+      'message' => t('You cannot enter a link title without a link url.'),
       'error_element' => array('url' => TRUE, 'title' => FALSE),
     );
   }
