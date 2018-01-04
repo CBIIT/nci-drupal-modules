@@ -1,0 +1,12 @@
+diff --git a/field_collection.module b/field_collection.module
+index beb884f..1b1fdda 100644
+--- a/field_collection.module
++++ b/field_collection.module
+@@ -1702,7 +1702,7 @@ function field_collection_field_widget_embed_validate($element, &$form_state, $c
+
+   // Only if the form is being submitted, finish the collection entity and
+   // prepare it for saving.
+-  if ($form_state['submitted'] && !form_get_errors()) {
++  if ($form_state['submitted'] && !form_get_error($element)) {
+
+     field_attach_submit('field_collection_item', $field_collection_item, $element, $form_state);
