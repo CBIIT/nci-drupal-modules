@@ -1,0 +1,12 @@
+name = Node Title Validation
+description = This module helps to validate node titles with min/max characters, Blacklist characters/words and unique node titles.
+package = Other
+core = 7.x
+configure = admin/config/content/node-title-validation
+
+; Information added by Drupal.org packaging script on 2016-03-19
+version = "7.x-1.2"
+core = "7.x"
+project = "node_title_validation"
+datestamp = "1458372843"
+
