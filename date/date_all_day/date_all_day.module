@@ -156,7 +156,7 @@ function theme_date_all_day($vars) {
  * Theme the way an 'all day' label will look.
  */
 function theme_date_all_day_label() {
-  return '(' . t('All day', array(), array('context' => 'datetime')) . ')';
+  return t('All day', array(), array('context' => 'datetime'));
 }
 
 /**

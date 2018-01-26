@@ -203,7 +203,7 @@ function date_repeat_days_ordered($week_start_day) {
  *
  * Constructs a human-readable description of the rule.
  */
-function date_repeat_rrule_description($rrule, $format = 'D, M d, Y') {
+function date_repeat_rrule_description($rrule, $format = 'D m/d/Y') {
   // Empty or invalid value.
   if (empty($rrule) || !strstr($rrule, 'RRULE')) {
     return;
@@ -232,79 +232,48 @@ function date_repeat_rrule_description($rrule, $format = 'D, M d, Y') {
     '!week_starts_on' => '',
   );
   $interval = date_repeat_interval_options();
+  switch ($rrule['FREQ']) {
+    case 'WEEKLY':
+      $description['!interval'] = format_plural($rrule['INTERVAL'], 'every week', 'every @count weeks') . ' ';
+      break;
 
-  if ($rrule['INTERVAL'] < 1) {
-    $rrule['INTERVAL'] = 1;
-  }
+    case 'MONTHLY':
+      $description['!interval'] = format_plural($rrule['INTERVAL'], 'every month', 'every @count months') . ' ';
+      break;
 
-  if ($rrule['FREQ'] == 'DAILY'
-      || $rrule['FREQ'] == 'WEEKLY'
-      || $rrule['INTERVAL'] > 1
-      || (empty($rrule['BYDAY']) && empty($rrule['BYMONTHDAY']) && empty($rrule['BYMONTH']))
-  ) {
-    switch ($rrule['FREQ']) {
-      case 'WEEKLY':
-        $description['!interval'] = format_plural($rrule['INTERVAL'], 'every week,', 'every @count weeks') . ' ';
-        break;
+    case 'YEARLY':
+      $description['!interval'] = format_plural($rrule['INTERVAL'], 'every year', 'every @count years') . ' ';
+      break;
 
-      case 'MONTHLY':
-        $description['!interval'] = format_plural($rrule['INTERVAL'], 'every month,', 'every @count months') . ' ';
-        break;
-
-      case 'YEARLY':
-        $description['!interval'] = format_plural($rrule['INTERVAL'], 'every year,', 'every @count years') . ' ';
-        break;
-
-      default:
-        $description['!interval'] = format_plural($rrule['INTERVAL'], 'every day,', 'every @count days') . ' ';
-        break;
-    }
+    default:
+      $description['!interval'] = format_plural($rrule['INTERVAL'], 'every day', 'every @count days') . ' ';
+      break;
   }
 
   if (!empty($rrule['BYDAY'])) {
     $days = date_repeat_dow_day_options();
     $counts = date_repeat_dow_count_options();
-    $ordinalResults = array();
-    $weeklyResults = array();
+    $results = array();
     foreach ($rrule['BYDAY'] as $byday) {
       // Get the numeric part of the BYDAY option, i.e. +3 from +3MO.
       $day = substr($byday, -2);
-      $strCount = drupal_substr($byday, 0, 2);
-      if ($count = intval($strCount)) {
-        $instance = t($days[$day]);
-        if (empty($ordinalResults[$count])) {
-          $ordinalResults[$count] = array();
-        }
-        $ordinalResults[$count][] = $instance;
+      $count = str_replace($day, '', $byday);
+      if (!empty($count)) {
+        // See if there is a 'pretty' option for this count, i.e. +1 => First.
+        $order = array_key_exists($count, $counts) ? strtolower($counts[$count]) : $count;
+        $results[] = trim(t('!repeats_every_interval on the !date_order !day_of_week',
+        array(
+          '!repeats_every_interval ' => '',
+          '!date_order' => $order,
+          '!day_of_week' => $days[$day]
+        )));
       }
       else {
-        $weeklyResults[] = t($days[$day]);
+        $results[] = trim(t('!repeats_every_interval every !day_of_week',
+        array('!repeats_every_interval ' => '', '!day_of_week' => $days[$day])));
       }
     }
-
-    $byDayResults = array();
-    if (!empty($weeklyResults)) {
-      $byDayResults[] = t('on') .' '. t(implodeGrammar($weeklyResults));
-    }
-    if (!empty($ordinalResults)) {
-      $resultsByOrdinal = array();
-      // TODO: Put this instances in the correct sequence. Currently they are
-      // 'fifth from last' to 'last', followed by 'first' to 'fifth'. They
-      // should probably be in order from earliest to latest so that 'first'
-      // comes before 'last'.
-      for ($i = -5; $i <= 5; $i++) {
-        if (!empty($ordinalResults[''. $i])) {
-          $ordinal = $i < 0 ? $i : ($i > 0 ? '+'. $i : '');
-          $resultsByOrdinal[] = t('the') .' '. drupal_strtolower(t($counts[$ordinal])) .' '. implodeGrammar($ordinalResults[$i]);
-        }
-      }
-      $byDayResults[] = t('on') .' '. t(implodeGrammar($resultsByOrdinal)) .' '. t('of the month');
-    }
-    $description['!byday'] = implodeGrammar($byDayResults);
-  }
-
-  if (!empty($rrule['COUNT'])) {
-    $description['!count'] = t('!count times.', array('!count' => $rrule['COUNT']));
+    $description['!byday'] = implode(' ' . t('and') . ' ', $results);
   }
   if (!empty($rrule['BYMONTH'])) {
     if (count($rrule['BYMONTH']) < 12) {
@@ -314,37 +283,37 @@ function date_repeat_rrule_description($rrule, $format = 'D, M d, Y') {
         $results[] = $months[$month];
       }
       if (!empty($rrule['BYMONTHDAY'])) {
-        $monthdays = $rrule['BYMONTHDAY'];
-        // Add ordinal suffix to each day
-        foreach ($monthdays as $id => $day) {
-          $monthdays[$id] = date_repeat_ordinal_suffix($day);
-        }
-        if (empty($results)) {
-          $results[0] = "the month";
-        }
-        $description['!bymonth'] = t(
-          'on the !month_days of !month_names,',
-          array(
-            '!month_days' => implodeGrammar($monthdays),
-            '!month_names' => implodeGrammar($results),
-          )
-        );
+        $description['!bymonth'] = trim(t('!repeats_every_interval on the !month_days of !month_names',
+        array(
+          '!repeats_every_interval ' => '',
+          '!month_days' => implode(', ', $rrule['BYMONTHDAY']),
+          '!month_names' => implode(', ', $results)
+        )));
       }
       else {
-        $description['!bymonth'] = t(
-          'during !month_names,',
-          array('!month_names' => implodeGrammar($results))
-        );
+        $description['!bymonth'] = trim(t('!repeats_every_interval on !month_names',
+        array(
+          '!repeats_every_interval ' => '',
+          '!month_names' => implode(', ', $results)
+        )));
       }
     }
+  }
+  if ($rrule['INTERVAL'] < 1) {
+    $rrule['INTERVAL'] = 1;
+  }
+  if (!empty($rrule['COUNT'])) {
+    $description['!count'] = trim(t('!repeats_every_interval !count times',
+    array('!repeats_every_interval ' => '', '!count' => $rrule['COUNT'])));
   }
   if (!empty($rrule['UNTIL'])) {
     $until = date_ical_date($rrule['UNTIL'], 'UTC');
     date_timezone_set($until, date_default_timezone_object());
-    $description['!until'] = t(
-      'until !until_date.',
-      array('!until_date' => date_format_date($until, 'custom', $format))
-    );
+    $description['!until'] = trim(t('!repeats_every_interval until !until_date',
+    array(
+      '!repeats_every_interval ' => '',
+      '!until_date' => date_format_date($until, 'custom', $format)
+    )));
   }
   if ($exceptions) {
     $values = array();
@@ -353,17 +322,16 @@ function date_repeat_rrule_description($rrule, $format = 'D, M d, Y') {
       date_timezone_set($except, date_default_timezone_object());
       $values[] = date_format_date($except, 'custom', $format);
     }
-    $description['!except'] = t(
-      'Except on !except_dates.',
-      array('!except_dates' => implodeGrammar($values))
-    );
+    $description['!except'] = trim(t('!repeats_every_interval except !except_dates',
+    array(
+      '!repeats_every_interval ' => '',
+      '!except_dates' => implode(', ', $values)
+    )));
   }
   if (!empty($rrule['WKST'])) {
     $day_names = date_repeat_dow_day_options();
-    $description['!week_starts_on'] = t(
-      'where the week starts on !day_of_week,',
-      array('!day_of_week' => $day_names[trim($rrule['WKST'])])
-    );
+    $description['!week_starts_on'] = trim(t('!repeats_every_interval where the week start on !day_of_week',
+    array('!repeats_every_interval ' => '', '!day_of_week' => $day_names[trim($rrule['WKST'])])));
   }
   if ($additions) {
     $values = array();
@@ -373,41 +341,15 @@ function date_repeat_rrule_description($rrule, $format = 'D, M d, Y') {
       $values[] = date_format_date($add, 'custom', $format);
     }
     $description['!additional'] = trim(t('Also includes !additional_dates.',
-      array('!additional_dates' => implode(', ', $values))));
+    array('!additional_dates' => implode(', ', $values))));
   }
-
-  $description = array_filter($description);
-  unset($description['!week_starts_on']); // Don't output this value
-
-  $output = implode(' ', $description);
-  $output = t('Repeats @repeat', array('@repeat' => $output));
-
+  $output = t('Repeats !interval !bymonth !byday !count !until !except. !additional', $description);
+  // Removes double whitespaces from Repeat tile.
+  $output = preg_replace('/\s+/', ' ', $output);
+  // Removes whitespace before full stop ".", at the end of the title.
+  $output = str_replace(' .', '.', $output);
   return $output;
 }
-
-/**
- * Implodes an array of strings using punctuation and/or a conjunction,
- * depending on the number of items in the array.
- */
-function implodeGrammar($terms, $punctuation = ',', $conjunction = 'and') {
-  $conjunction = t($conjunction);
-  $count = count($terms);
-  if ($count == 1) {
-    return $terms[0];
-  }
-  elseif ($count == 2) {
-    return implode(' '. $conjunction .' ', $terms);
-  }
-  else {
-    $result = array();
-    for ($i = 0; $i < $count - 1; $i++) {
-      $result[] = $terms[$i];
-    }
-    $result[] = ' '. $conjunction .' '. $terms[$count - 1];
-    return implode($punctuation .' ', $result);
-  }
-  return '';
- }
 
 /**
  * Parse an iCal rule into a parsed RRULE array and an EXDATE array.
@@ -451,22 +393,6 @@ function date_repeat_calc($rrule, $start, $end, $exceptions = array(), $timezone
 function date_repeat_rrule_process($element, &$form_state, $form) {
   module_load_include('inc', 'date_repeat', 'date_repeat_form');
   return _date_repeat_rrule_process($element, $form_state, $form);
-}
-
-/**
- * Adds an ordinal suffix to a number
- */
-function date_repeat_ordinal_suffix($number) {
-  switch ($number % 10) {
-    case 1:
-      return $number .'st';
-    case 2:
-      return $number .'nd';
-    case 3:
-      return $number .'rd';
-    default:
-      return $number .'th';
-  }
 }
 
 /**
