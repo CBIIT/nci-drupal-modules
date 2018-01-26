@@ -269,11 +269,11 @@ function template_preprocess_calendar_day(&$vars) {
         $group_time = NULL;
         $divisor = NULL;
         if ($display_overlap) {
-          if ($view->style_options['groupby_times'] == 'half') {
+          if ($view->style_plugin->options['groupby_times'] == 'half') {
             $group_time = 30;
             $divisor = 7.5;
           }
-          elseif ($view->style_options['groupby_times'] == 'hour') {
+          elseif ($view->style_plugin->options['groupby_times'] == 'hour') {
             $group_time = 60;
             $divisor = 15;
           }
@@ -462,6 +462,7 @@ function template_preprocess_calendar_week(&$vars) {
     }
   }
 
+
   // Do the headers last, once we know what the actual values are.
   $i = 0;
   $start_times = array_keys($grouped_items);
@@ -482,11 +483,11 @@ function template_preprocess_calendar_week(&$vars) {
           if ($display_overlap) {
             $group_time = NULL;
             $divisor = NULL;
-            if ($view->style_options['groupby_times'] == 'half'){
+            if ($view->style_plugin->options['groupby_times'] == 'half'){
               $group_time = 30;
               $divisor = 7.5;
             }
-            elseif ($view->style_options['groupby_times'] == 'hour'){
+            elseif ($view->style_plugin->options['groupby_times'] == 'hour'){
               $group_time = 60;
               $divisor = 15;
             }
@@ -697,28 +698,6 @@ function theme_calendar_stripe_legend($vars) {
           foreach ($entities as $entity) {
             list($gid) = entity_extract_ids($entity_type, $entity);
             $options[$gid] = check_plain(t(entity_label($entity_type, $entity)));
-          }
-        }
-      }
-      break;
-
-    case 'entityreference':
-      $fields = $view->display_handler->get_option('fields');
-      if (isset($fields[$row_options['colors']['entityreference_field']])) {
-        $entityreference_field = field_info_field($row_options['colors']['entityreference_field']);
-
-        $entity_type = $entityreference_field['settings']['target_type'];
-        foreach ($entityreference_field['settings']['handler_settings']['target_bundles'] as $bundle) {
-          $query = new EntityFieldQuery();
-          $result = $query->entityCondition('entity_type', $entity_type)
-            ->entityCondition('bundle', $bundle)
-            ->execute();
-          if (isset($result[$entity_type])) {
-            $entity_ids = array_keys($result[$entity_type]);
-            $entity_loaded = entity_load($entity_type, $entity_ids);
-            foreach ($entity_loaded as $entity_id => $entity_object) {
-              $options[$entity_id] = check_plain(t(entity_label($entity_type, $entity_object)));
-            }
           }
         }
       }

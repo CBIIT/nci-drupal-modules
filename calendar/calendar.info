@@ -16,9 +16,9 @@ files[] = includes/calendar.views_template.inc
 files[] = theme/theme.inc
 files[] = theme/calendar-style.tpl.php
 
-; Information added by Drupal.org packaging script on 2014-10-14
-version = "7.x-3.5"
+; Information added by Drupal.org packaging script on 2017-11-30
+version = "7.x-3.5+1-dev"
 core = "7.x"
 project = "calendar"
-datestamp = "1413299943"
+datestamp = "1512036204"
 
