@@ -1,0 +1,18 @@
+commit a3822d4f9d405855f2fcd6542afd8afd1ea49b83
+Author: git <git@352486.no-reply.drupal.org>
+Date:   Thu Sep 21 23:46:56 2017 +1200
+
+    Issue #2894224 by super_romeo, xurizaemon: "Save to watchdog" shows in Navigate menu
+
+diff --git a/ajax_error_behavior.module b/ajax_error_behavior.module
+index d7a4dfb..58900d7 100644
+--- a/ajax_error_behavior.module
++++ b/ajax_error_behavior.module
+@@ -15,6 +15,7 @@ function ajax_error_behavior_menu() {
+     'description' => 'Save AJAX error to the watchdog.',
+     'access callback' => TRUE,
+     'page callback' => 'ajax_error_behavior_log',
++    'type' => MENU_CALLBACK,
+   );
+ 
+   return $items;
