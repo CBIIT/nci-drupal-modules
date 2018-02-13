@@ -1,0 +1,42 @@
+diff --git a/term_name_validation/term_name_validation.module b/term_name_validation/term_name_validation.module
+index 09fa1a4..153e97b 100755
+--- a/term_name_validation/term_name_validation.module
++++ b/term_name_validation/term_name_validation.module
+@@ -317,12 +317,21 @@ function term_name_validation_validate($form, &$form_state) {
+ 
+   if ($term_name_validation_config) {
+ 
+-    // Validating Unique term names.
+-    if (term_name_validation_unique_term($term, $vid, $tid)) {
+-      form_set_error('name', t('The term %term already exists in this vocabulary!.', array('%term' => check_plain($term))));
++    $vocabulary = taxonomy_vocabulary_load($vid);
++
++    // Validate term uniqueness for all vocabularies.
++    if ($term_name_validation_config['unique']) {
++      if (term_name_validation_unique_term($term, NULL, $tid)) {
++        form_set_error('name', t('The term %term already exists in one of the vocabularies!.', array('%term' => check_plain($term))));
++      }
+     }
+ 
+-    $vocabulary = taxonomy_vocabulary_load($vid);
++    // Validate term uniqueness for specific vocabulary.
++    if (!empty($term_name_validation_config['unique-' . $vocabulary->machine_name])) {
++      if (term_name_validation_unique_term($term, $vocabulary->machine_name, $tid)) {
++        form_set_error('name', t('The term %term already exists in this vocabulary!.', array('%term' => check_plain($term))));
++      }
++    }
+ 
+     // Get exclude values for current content type.
+     $type_exclude = isset($term_name_validation_config['exclude-' . $vocabulary->machine_name]) ? $term_name_validation_config['exclude-' . $vocabulary->machine_name] : '';
+@@ -386,9 +395,9 @@ function term_name_validation_validate($form, &$form_state) {
+  * @return
+  *   returns bool TRUE if the term already exists, FALSE if not.
+  */
+-function term_name_validation_unique_term($term, $vid, $tid = 0) {
++function term_name_validation_unique_term($term, $vocabulary_machine_name, $tid = 0) {
+   // Tid null means new term else editing.
+-  $term_objects = taxonomy_get_term_by_name($term);
++  $term_objects = taxonomy_get_term_by_name($term, $vocabulary_machine_name);
+ 
+   // While adding new term check that any term already exists.
+   if (empty($tid) || $tid == 0) {

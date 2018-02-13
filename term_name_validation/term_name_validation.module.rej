@@ -1,0 +1,38 @@
+***************
+*** 378,394 ****
+   *
+   * @param $term
+   *   Name of the new term to check
+-  * @param int $vid
+-  *   ID of the vocabulary the new term belongs to
+   * @param int $tid
+   *   Term ID of the new term (used when updating an existing term name)
+   *
+   * @return bool
+   *   returns TRUE if the term already exists, otherwise FALSE.
+   */
+- function term_name_validation_unique_term($term, $vid, $tid = 0) {
+    // Tid null means new term else editing.
+-   $term_objects = taxonomy_get_term_by_name($term);
+  
+    // While adding new term check that any term already exists.
+    if (empty($tid) || $tid == 0) {
+--- 387,404 ----
+   *
+   * @param $term
+   *   Name of the new term to check
++  * @param string $vocabulary_machine_name
++  *   Machine name of the vocabulary the new term belongs to,
++  *   or NULL if we want to validate uniqueness across all vocabularies
+   * @param int $tid
+   *   Term ID of the new term (used when updating an existing term name)
+   *
+   * @return bool
+   *   returns TRUE if the term already exists, otherwise FALSE.
+   */
++ function term_name_validation_unique_term($term, $vocabulary_machine_name, $tid = 0) {
+    // Tid null means new term else editing.
++   $term_objects = taxonomy_get_term_by_name($term, $vocabulary_machine_name);
+  
+    // While adding new term check that any term already exists.
+    if (empty($tid) || $tid == 0) {
