@@ -1,11 +1,12 @@
 name = Date Repeat Instance
 description = Detaches instances of repeated dates into their own nodes.
 core = 7.x
-dependencies[] = date_repeat
+dependencies[] = date_repeat_field
 package = Date/Time
-; Information added by drupal.org packaging script on 2012-01-17
-version = "7.x-1.2"
+
+; Information added by Drupal.org packaging script on 2015-10-27
+version = "7.x-1.2+8-dev"
 core = "7.x"
 project = "date_repeat_instance"
-datestamp = "1326840946"
+datestamp = "1445969641"
 

@@ -482,7 +482,7 @@ function date_ical_parse_rrule($field, $data) {
       $values = explode(',', $param[1]);
     }
     // Treat items differently if they have multiple or single values.
-    if (in_array($param[0], array('FREQ', 'INTERVAL', 'COUNT', 'WKST'))) {
+    if (in_array($param[0], array('FREQ', 'INTERVAL', 'COUNT', 'WKST', 'NEVER'))) {
       $items[$param[0]] = $param[1];
     }
     else {
@@ -758,6 +758,10 @@ function date_api_ical_build_rrule($form_values) {
   // modules using the API, so add it to the rule.
   if (array_key_exists('COUNT', $form_values)) {
     $rrule .= ';COUNT=' . $form_values['COUNT'];
+  }
+
+  if (array_key_exists('NEVER', $form_values)) {
+    $rrule .= ';NEVER=' . $form_values['NEVER'];
   }
 
   // iCal rules presume the week starts on Monday unless otherwise specified,
