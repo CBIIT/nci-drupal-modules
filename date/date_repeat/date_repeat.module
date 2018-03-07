@@ -68,6 +68,124 @@ function date_repeat_interval_options() {
 }
 
 /**
+ * Implements hook_cron().
+ *
+ * Create new date entries in the future for never ending repeating dates.
+ */
+function date_repeat_cron() {
+  module_load_include('inc', 'date_api', 'date_api_ical');
+  $query = db_query("select field_config_instance.field_name,field_config_instance.entity_type,field_config_instance.bundle,field_config.type,field_config.data from {field_config_instance} field_config_instance left join {field_config} field_config on field_config.field_name=field_config_instance.field_name where field_config.module='date' and field_config.type in ('datetime', 'date', 'datestamp')");
+  foreach($query as $row) {
+    $data = unserialize($row->data);
+    if(isset($data['settings']['repeat']) && $data['settings']['repeat'] == 1 && (isset($data['settings']['cache_enabled']) && $data['settings']['cache_enabled'] == 1)) {
+      date_repeat_process_repeat_date_field($row->field_name, $row->type, $row->entity_type, $row->bundle, $data);
+    }
+  }
+}
+
+/**
+ * Helper function for date_repeat_cron().
+ */
+function date_repeat_process_repeat_date_field($field_name, $field_type, $entity_type, $bundle, $data) {
+  if ($entity_type == 'node') {
+    $nids = db_query("select nid from {node} where type=:type", array(':type' => $bundle));
+    foreach ($nids as $nid) {
+      $entity = node_load($nid->nid);
+      date_repeat_process_repeat_date_entity($entity, $field_name, $field_type, $entity_type, $bundle, $data);
+    }
+  }
+}
+
+/**
+ * Helper function for date_repeat_process_repeat_date_field().
+ */
+function date_repeat_process_repeat_date_entity($entity, $field_name, $field_type, $entity_type, $bundle, $data) {
+  $languagecode = 'und';
+  if (isset($entity->{$field_name}[$languagecode][0]['rrule']) && $entity->{$field_name}[$languagecode][0]['rrule']) {
+    $rruletext = $entity->{$field_name}[$languagecode][0]['rrule'];
+    $parts = explode("\n", $rruletext);
+    if (count($parts)) {
+      $rruletext = $parts[0];
+    }
+    // Get the parsed array of rule values.
+    $rrule = date_ical_parse_rrule('RRULE:', $rruletext);
+    if (isset($rrule['NEVER'][0]) && $rrule['NEVER'][0] && strtotime($rrule['NEVER'][0])) {
+      date_repeat_process_repeat_date_entity_never_field($entity, $field_name, $field_type, $entity_type, $bundle, $data, $languagecode, $rrule['NEVER'][0], $rruletext);
+    }
+  }
+}
+
+/**
+ * Helper function for date_repeat_process_repeat_date_entity_never_field().
+ */
+function date_repeat_process_repeat_date_entity_never_field($entity, $field_name, $field_type, $entity_type, $bundle, $data, $languagecode, $NEVER, $rruletext) {
+  $field_count = count($entity->{$field_name}[$languagecode]);
+  $lastdate = $entity->{$field_name}[$languagecode][$field_count-1]['value'];
+  $endday_time = strtotime($NEVER);
+
+  switch($field_type) {
+    case 'date':
+      $lastdate = str_replace('T', ' ', $lastdate);
+      $lastdate = strtotime($lastdate);
+      $endday = date('Y-m-d', $endday_time).'T'.date('H:i:s', $endday_time);
+      break;
+    case 'datetime':
+      $lastdate = strtotime($lastdate);
+      $endday = date('Y-m-d H:i:s', $endday_time);
+      break;
+    case 'datestamp':
+      $endday = $endday_time;
+      break;
+  }
+
+  $timezone_db = date_get_timezone_db($data['settings']['tz_handling']);
+  $endday = new DateObject($endday, $timezone_db, date_type_format($field_type));
+  $endday_datetime = date_format($endday, DATE_FORMAT_DATETIME);
+  $data['type'] = $field_type;
+  $data['field_name'] = $field_name;
+  $item = $entity->{$field_name}[$languagecode][$field_count-1];
+  unset($item['db']);
+  $dates = date_repeat_build_dates($rruletext, null, $data, $item, $endday_datetime);
+  array_shift($dates);
+
+  if ($dates && count($dates) > 0) {
+    $tablename = 'field_data_'.$field_name;
+    $revision_tablename = 'field_revision_'.$field_name;
+    $lastrow = db_query("select * from {".$tablename."} where entity_type=:entity_type and bundle=:bundle and revision_id=:revision_id order by delta desc limit 0,1", array(':entity_type' => $entity_type, ':bundle' => $bundle, ':revision_id' => $entity->vid))->fetchObject();
+    $delta = $lastrow->delta;
+
+    $insertdata = array(
+      ':entity_type' => $lastrow->entity_type,
+      ':bundle' => $lastrow->bundle,
+      ':deleted' => $lastrow->deleted,
+      ':entity_id' => $lastrow->entity_id,
+      ':revision_id' => $lastrow->revision_id,
+      ':language' => $lastrow->language,
+      ':delta' => $delta,
+    );
+
+    foreach($dates as $date) {
+      $delta++;
+      $insertdata[':value'] = $date['value'];
+      $insertdata[':rrule'] = $date['rrule'];
+      $insertdata[':delta'] = $delta;
+
+      if($data['settings']['todate']) {
+        $insertdata[':value2'] = $date['value2'];
+        db_query("insert into {".$tablename."} (entity_type,bundle,deleted,entity_id,revision_id,language,delta,".$field_name."_value,".$field_name."_value2, ".$field_name."_rrule) values (:entity_type,:bundle,:deleted,:entity_id,:revision_id,:language,:delta, :value, :value2, :rrule)", $insertdata);
+        db_query("insert into {".$revision_tablename."} (entity_type,bundle,deleted,entity_id,revision_id,language,delta,".$field_name."_value,".$field_name."_value2, ".$field_name."_rrule) values (:entity_type,:bundle,:deleted,:entity_id,:revision_id,:language,:delta, :value, :value2, :rrule)", $insertdata);
+      }
+      else {
+        db_query("insert into {".$tablename."} (entity_type,bundle,deleted,entity_id,revision_id,language,delta,".$field_name."_value, ".$field_name."_rrule) values (:entity_type,:bundle,:deleted,:entity_id,:revision_id,:language,:delta, :value, :rrule)", $insertdata);
+        db_query("insert into {".$revision_tablename."} (entity_type,bundle,deleted,entity_id,revision_id,language,delta,".$field_name."_value, ".$field_name."_rrule) values (:entity_type,:bundle,:deleted,:entity_id,:revision_id,:language,:delta, :value, :rrule)", $insertdata);
+      }
+    }
+
+    db_query("delete from {cache_field} where cid=:cid", array('cid' => 'field:node:'.$entity->nid));
+  }
+}
+
+/**
  * Helper function for FREQ options.
  *
  * Translated and untranslated arrays of the iCal day of week names.

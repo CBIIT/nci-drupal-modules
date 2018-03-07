@@ -1,0 +1,13 @@
+diff --git a/date/date.theme b/date/date.theme
+index c4ea352..ed8594d 100644
+--- a/date/date.theme
++++ b/date/date.theme
+@@ -349,7 +349,7 @@ function theme_date_display_range($variables) {
+   }
+ 
+   // Wrap the result with the attributes.
+-  $output = '<span class="date-display-range">' . t('!start-date to !end-date', array(
++  $output = '<span class="date-display-range">' . t('!start-date - !end-date', array(
+     '!start-date' => $start_date,
+     '!end-date' => $end_date,
+   )) . '</span>';

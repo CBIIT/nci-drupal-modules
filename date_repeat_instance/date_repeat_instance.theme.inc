@@ -1,6 +1,11 @@
 <?php
 
 /**
+ * @file
+ * Date Repeat Instance theme functions.
+ */
+
+/**
  * Date theme wrapper function to add edit and delete links.
  */
 function theme_date_repeat_instance_wrapper($function, $vars) {
@@ -10,13 +15,13 @@ function theme_date_repeat_instance_wrapper($function, $vars) {
 
   // Add edit and delete links.
   if (date_repeat_instance_access('update', $vars['entity'], $vars['field']['field_name'], $vars['langcode'], $vars['delta'])) {
-    $output .= ' - '. l('edit', "node/{$vars['entity']->nid}/date_repeat_instance_edit/{$vars['field']['field_name']}/{$vars['langcode']}/{$vars['delta']}");
+    $output .= ' - ' . l(t('edit'), "node/{$vars['entity']->nid}/date_repeat_instance_edit/{$vars['field']['field_name']}/{$vars['langcode']}/{$vars['delta']}");
   }
   if (date_repeat_instance_access('delete', $vars['entity'], $vars['field']['field_name'], $vars['langcode'], $vars['delta'])) {
-    $output .= ' - '. l('delete', "node/{$vars['entity']->nid}/date_repeat_instance_delete/{$vars['field']['field_name']}/{$vars['langcode']}/{$vars['delta']}", array('query' => drupal_get_destination()));
+    $output .= ' - ' . l(t('delete'), "node/{$vars['entity']->nid}/date_repeat_instance_delete/{$vars['field']['field_name']}/{$vars['langcode']}/{$vars['delta']}", array('query' => drupal_get_destination()));
   }
 
-  return '<div class="date-repeat-instance">'. $output .'</div>';
+  return '<div class="date-repeat-instance">' . $output . '</div>';
 }
 
 /**

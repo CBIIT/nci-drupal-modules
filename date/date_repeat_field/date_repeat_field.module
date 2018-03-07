@@ -373,6 +373,20 @@ function date_repeat_field_widget_validate($element, &$form_state) {
     form_set_error($error_field_count, t("Missing value in 'Range of repeat'. (COUNT).", array(), array('context' => 'Date repeat')));
   }
 
+  $error_field_never = $error_field_base . '][rrule][never_child';
+  if (!empty($item['rrule']) && $rrule_values['range_of_repeat'] === 'NEVER' && empty($rrule_values['NEVER'])) {
+    form_set_error($error_field_never, t("Missing value in 'Range of repeat'. (NEVER).", array(), array('context' => 'Date repeat')));
+  }
+  elseif (!empty($item['rrule']) && $rrule_values['range_of_repeat'] === 'NEVER' && $rrule_values['NEVER']) {
+    $output = strtotime($rrule_values['NEVER']);
+    if (!$output) {
+      form_set_error($error_field_never, t("Wrong date/time value in 'Range of repeat'. (NEVER).", array(), array('context' => 'Date repeat')));
+    }
+    else {
+      $rrule_values['NEVER_time'] = $output - time();
+    }
+  }
+
   if (form_get_errors()) {
     return;
   }
@@ -433,7 +447,7 @@ function date_repeat_after_build(&$element, &$form_state) {
  * whichever is missing will be created when needed.
  */
 // @codingStandardsIgnoreStart
-function date_repeat_build_dates($rrule = NULL, $rrule_values = NULL, $field, $item) {
+function date_repeat_build_dates($rrule = NULL, $rrule_values = NULL, $field, $item, $end_datetime = FALSE) {
 // @codingStandardsIgnoreEnd
   include_once DRUPAL_ROOT . '/' . drupal_get_path('module', 'date_api') . '/date_api_ical.inc';
   $field_name = $field['field_name'];
@@ -473,9 +487,31 @@ function date_repeat_build_dates($rrule = NULL, $rrule_values = NULL, $field, $i
   elseif (!empty($rrule_values['COUNT'])) {
     $end_datetime = NULL;
   }
+  elseif (!empty($rrule_values['NEVER'])) {
+    // Don't return if we have a NEVER.
+  }
   else {
     // No UNTIL and no COUNT?
     return array();
+  }
+
+  if (!$end_datetime) {
+    if (!empty($rrule_values['UNTIL']['datetime'])) {
+      $end = date_ical_date($rrule_values['UNTIL'], $timezone);
+      $end_datetime = date_format($end, DATE_FORMAT_DATETIME);
+    }
+    elseif (!empty($rrule_values['COUNT'])) {
+      $end_datetime = NULL;
+    }
+    elseif (!empty($rrule_values['NEVER'])) {
+      $never_opt = array('datetime' => date('Y-m-d H:i:s', strtotime((is_array($rrule_values['NEVER']) ? $rrule_values['NEVER'][0] : $rrule_values['NEVER']))), 'tz' => null);
+      $end = date_ical_date($never_opt, $timezone);
+      $end_datetime = date_format($end, DATE_FORMAT_DATETIME);
+    }
+    else {
+      // No UNTIL and no COUNT?
+      return array();
+    }
   }
 
   // Split the RRULE into RRULE, EXDATE, and RDATE parts.

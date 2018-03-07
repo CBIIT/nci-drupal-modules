@@ -1,6 +1,11 @@
 <?php
 
 /**
+ * @file
+ * Date Repeat Instance pages.
+ */
+
+/**
  * Detaches an instance of a repeating date by cloning the node.
  */
 function date_repeat_instance_edit($original_node, $field, $langcode, $delta) {
@@ -16,7 +21,7 @@ function date_repeat_instance_edit($original_node, $field, $langcode, $delta) {
   $node->path = NULL;
 
   // Set page title.
-  drupal_set_title(t('Detach: ') . $node->title);
+  drupal_set_title(t('Detach: @title', array('@title' => $node->title)));
 
   // Save the parameters for use in hook_form_alter().
   $node->date_repeat_instance = array(
@@ -33,16 +38,18 @@ function date_repeat_instance_edit($original_node, $field, $langcode, $delta) {
     }
   }
 
-  // Move the instance of the detached date into position 0.
-  $node->{$field}[$langcode][0] = $node->{$field}[$langcode][$delta];
-  unset($node->{$field}[$langcode][$delta]);
+  // Move instance of detached date into position 0 (unless its already at 0).
+  if ($delta != 0) {
+    $node->{$field}[$langcode][0] = $node->{$field}[$langcode][$delta];
+    unset($node->{$field}[$langcode][$delta]);
+  }
 
   // Unset its repeating rule.
   $node->{$field}[$langcode][0]['rrule'] = NULL;
 
   // Render node form.
   module_load_include('inc', 'node', 'node.pages');
-  return drupal_get_form($node->type .'_node_form', $node);
+  return drupal_get_form($node->type . '_node_form', $node);
 }
 
 /**
@@ -66,9 +73,8 @@ function date_repeat_instance_delete_confirm($form, $form_state, $node, $field, 
  * Confirmation submit handler which deletes the instance of a repeating date.
  */
 function date_repeat_instance_delete_confirm_submit($form, &$form_state) {
-  extract($form_state['values']);
-  if ($confirm) {
-    date_repeat_instance_set_exception($node, $field, $langcode, $delta);
+  if ($form_state['values']['confirm']) {
+    date_repeat_instance_set_exception($form_state['values']['node'], $form_state['values']['field'], $form_state['values']['langcode'], $form_state['values']['delta']);
   }
-  $form_state['redirect'] = "node/$node->nid";
+  $form_state['redirect'] = 'node/' . $form_state['values']['node']->nid;
 }
