@@ -321,7 +321,7 @@ function date_repeat_days_ordered($week_start_day) {
  *
  * Constructs a human-readable description of the rule.
  */
-function date_repeat_rrule_description($rrule, $format = 'D, M d, Y') {
+function date_repeat_rrule_description($rrule, $format = 'M d, Y') {
   // Empty or invalid value.
   if (empty($rrule) || !strstr($rrule, 'RRULE')) {
     return;

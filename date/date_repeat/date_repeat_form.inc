@@ -528,7 +528,7 @@ function _date_repeat_rrule_process($element, &$form_state, $form) {
   );
 
   $never_prefix = '<div class="date-prefix-inline">' . t('Never', array(), array('context' => 'Date repeat')) . '</div>'.'<div class="form-wrapper" style="display: inline-block;vertical-align: middle;margin:0px 10px;"><div><b>'.t('Automatically create new entries this far into the future during cron runs.', array(), array('context' => 'Date repeat')).'</b></div>';
-  $never_suffix = '<div class="description">'.t('Format: <a href="http://www.php.net/strtotime">PHP strtotime format</a>.', array(), array('context' => 'Date repeat')).'</div></div>';
+  $never_suffix = '<div class="description">'.t('Example: 1 week or 1 Day', array(), array('context' => 'Date repeat')).'</div></div>';
 
   $never_form_element = array(
     '#type' => 'textfield',
