@@ -1,0 +1,18 @@
+diff --git a/modules/field.info.inc b/modules/field.info.inc
+index aeea79a..81596ff 100644
+--- a/modules/field.info.inc
++++ b/modules/field.info.inc
+@@ -27,7 +27,12 @@ function entity_metadata_field_entity_property_info() {
+ 
+           if ($instance && empty($instance['deleted'])) {
+             foreach ($field_type['property_callbacks'] as $callback) {
+-              $callback($info, $entity_type, $field, $instance, $field_type);
++              if (function_exists($callback)) {
++                $callback($info, $entity_type, $field, $instance, $field_type);
++              }
++              else {
++                watchdog($entity_type, 'Missing property callback %callback.', array('%callback' => $callback), WATCHDOG_ERROR);
++              }
+             }
+           }
+         }
