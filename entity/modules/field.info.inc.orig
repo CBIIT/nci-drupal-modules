@@ -27,12 +27,7 @@ function entity_metadata_field_entity_property_info() {
 
           if ($instance && empty($instance['deleted'])) {
             foreach ($field_type['property_callbacks'] as $callback) {
-              if (function_exists($callback)) {
-                $callback($info, $entity_type, $field, $instance, $field_type);
-              }
-              else {
-                watchdog($entity_type, 'Missing property callback %callback.', array('%callback' => $callback), WATCHDOG_ERROR);
-              }
+              $callback($info, $entity_type, $field, $instance, $field_type);
             }
           }
         }
