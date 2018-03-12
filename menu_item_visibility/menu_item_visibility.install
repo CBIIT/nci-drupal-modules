@@ -1,6 +1,11 @@
 <?php
 
 /**
+ * @file
+ * Install, update and uninstall functions for the menu_item_visibility module.
+ */
+
+/**
  * Implements hook_schema().
  */
 function menu_item_visibility_schema() {
