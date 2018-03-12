@@ -162,7 +162,7 @@ function contact_site_form_submit($form, &$form_state) {
   // Jump to home page rather than back to contact page to avoid
   // contradictory messages if flood control has been activated.
   drupal_set_message(t('Your message has been sent.'));
-  $form_state['redirect'] = '';
+  //$form_state['redirect'] = '';
 }
 
 /**
