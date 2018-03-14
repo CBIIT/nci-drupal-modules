@@ -1,6 +1,11 @@
 <?php
 
 /**
+ * @file
+ * Alters the menu item form to specify roles who are allowed to view them.
+ */
+
+/**
  * Implements hook_menu_link_alter().
  *
  * In order to have our menu_item_visibility_translated_menu_link_alter()
@@ -69,7 +74,7 @@ function menu_item_visibility_load($mlid, $reset = FALSE) {
   if (!isset($visibilities) || $reset) {
     // Select all menu link ids and their role ids.
     $result = db_select('menu_links_visibility_role', 'r')
-      ->fields('r')
+      ->fields('r', array('mlid', 'rid'))
       ->execute()
       ->fetchAll(PDO::FETCH_ASSOC);
 
@@ -82,11 +87,12 @@ function menu_item_visibility_load($mlid, $reset = FALSE) {
   if (!empty($mlid)) {
     drupal_alter('menu_item_visibility_load', $visibility, $mlid);
   }
+
   return $visibility;
 }
 
 /**
- * Implements hook_menu_link_insert()
+ * Implements hook_menu_link_insert().
  */
 function menu_item_visibility_menu_link_insert($link) {
   if (!empty($link['roles']) && $roles = array_filter($link['roles'])) {
@@ -100,7 +106,7 @@ function menu_item_visibility_menu_link_insert($link) {
 }
 
 /**
- * Implements hook_menu_link_update()
+ * Implements hook_menu_link_update().
  *
  * Disabled as a hook until http://drupal.org/node/1013856 is fixed.
  */
@@ -117,7 +123,7 @@ function _menu_item_visibility_menu_link_update($link) {
 }
 
 /**
- * Implements hook_menu_link_delete()
+ * Implements hook_menu_link_delete().
  */
 function menu_item_visibility_menu_link_delete($link) {
   db_delete('menu_links_visibility_role')
@@ -126,7 +132,7 @@ function menu_item_visibility_menu_link_delete($link) {
 }
 
 /**
- * Implements hook_user_role_delete()
+ * Implements hook_user_role_delete().
  */
 function menu_item_visibility_user_role_delete($role) {
   db_delete('menu_links_visibility_role')
