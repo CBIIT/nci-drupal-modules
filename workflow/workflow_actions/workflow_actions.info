@@ -1,0 +1,16 @@
+name = Workflow Trigger
+description = Enables actions to be fired upon a Workflow State change.
+package = Workflow
+core = 7.x
+
+dependencies[] = trigger
+dependencies[] = workflow
+
+configure = admin/structure/trigger/workflow
+
+; Information added by Drupal.org packaging script on 2017-10-26
+version = "7.x-2.11"
+core = "7.x"
+project = "workflow"
+datestamp = "1509025748"
+

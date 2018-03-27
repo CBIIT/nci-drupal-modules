@@ -681,7 +681,6 @@ function pathauto_punctuation_chars() {
       $punctuation['greater_than']       = array('value' => '>', 'name' => t('Greater-than sign'));
       $punctuation['slash']              = array('value' => '/', 'name' => t('Slash'));
       $punctuation['back_slash']         = array('value' => '\\', 'name' => t('Backslash'));
-      $punctuation['zero_width_space']   = array('value' => 'â€‹', 'name' => t('Zero-width space'));
 
       // Allow modules to alter the punctuation list and cache the result.
       drupal_alter('pathauto_punctuation_chars', $punctuation);
