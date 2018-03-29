@@ -1,0 +1,20 @@
+diff --git a/date/date_all_day/date_all_day.module b/date/date_all_day/date_all_day.module
+index b2edb06..4410dd2 100644
+--- a/date/date_all_day/date_all_day.module
++++ b/date/date_all_day/date_all_day.module
+@@ -382,6 +382,7 @@ function date_all_day_date_combo_pre_validate_alter(&$element, &$form_state, $co
+  */
+ function date_all_day_date_combo_validate_date_start_alter(&$date, &$form_state, $context) {
+   // If this is an 'All day' value, set the time to midnight.
++  $date = new DateTime;
+   if (!empty($context['element']['#date_is_all_day'])) {
+     $date->setTime(0, 0, 0);
+   }
+@@ -396,6 +397,7 @@ function date_all_day_date_combo_validate_date_start_alter(&$date, &$form_state,
+  */
+ function date_all_day_date_combo_validate_date_end_alter(&$date, &$form_state, $context) {
+   // If this is an 'All day' value, set the time to midnight.
++  $date = new DateTime;
+   if (!empty($context['element']['#date_is_all_day'])) {
+     $date->setTime(0, 0, 0);
+   }
