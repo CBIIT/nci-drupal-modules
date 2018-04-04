@@ -221,7 +221,7 @@ class DateObject extends DateTime {
     // Special handling for Unix timestamps expressed in the local timezone.
     // Create a date object in UTC and convert it to the local timezone. Don't
     // try to turn things like '2010' with a format of 'Y' into a timestamp.
-    if (is_numeric($time) && (empty($format) || $format == 'U')) {
+    if (!is_array($time) && ctype_digit((string)$time) && (empty($format) || $format == 'U')) {
       // Assume timestamp.
       $time = "@" . $time;
       $date = new DateObject($time, 'UTC');
