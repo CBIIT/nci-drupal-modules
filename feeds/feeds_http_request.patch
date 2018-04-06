@@ -1,12 +1,11 @@
-diff --git a/http_request.inc b/http_request.inc
-index 39cd0ed..021f2d1 100644
---- a/http_request.inc
-+++ b/http_request.inc
-@@ -275,7 +275,21 @@ function http_request_get($url, $username = NULL, $password = NULL, $accept_inva
-       return http_request_get($url, $username, $password, $accept_invalid_cert, $request_timeout);
+diff --git a/libraries/http_request.inc b/libraries/http_request.inc
+index 330fc4d..aca2c77 100644
+--- a/libraries/http_request.inc
++++ b/libraries/http_request.inc
+@@ -350,6 +350,22 @@ function feeds_http_request($url, array $options = array()) {
      }
    }
--
+ 
 +$user_url = "https://www.projectdatasphere.org/projectdatasphere/html/rest/NCI/users";
 +$request_url = "https://www.projectdatasphere.org/projectdatasphere/html/rest/NCI/requests";
 +$request_other_approved_users_url = "https://www.projectdatasphere.org/projectdatasphere/html/rest/NCI/requests/otherapprovedusers";
@@ -22,6 +21,7 @@ index 39cd0ed..021f2d1 100644
 +$pdsdata = pds_data();
 +$result->data = $pdsdata['request_other_approved_users'];
 +}
-   // Set caches.
-   http_request_set_cache($url, $result);
-   $download_cache[$url] = $result;
++
+   // Set caches if asked.
+   if ($options['cache_http_result']) {
+     http_request_set_cache($url, $result);
