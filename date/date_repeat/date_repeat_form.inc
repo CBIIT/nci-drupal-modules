@@ -82,11 +82,6 @@ function _date_repeat_rrule_process($element, &$form_state, $form) {
     $count = $merged_values['COUNT'];
   }
 
-  $never = '1 year';
-  if (!empty($merged_values['NEVER'])) {
-    $never = $merged_values['NEVER'];
-  }
-
   $element['FREQ'] = array(
     '#type' => 'select',
     '#title' => t('Repeats', array(), array('context' => 'Date repeat')),
@@ -527,27 +522,10 @@ function _date_repeat_rrule_process($element, &$form_state, $form) {
     ),
   );
 
-  $never_prefix = '<div class="date-prefix-inline">' . t('Never', array(), array('context' => 'Date repeat')) . '</div>'.'<div class="form-wrapper" style="display: inline-block;vertical-align: middle;margin:0px 10px;"><div><b>'.t('Automatically create new entries this far into the future during cron runs.', array(), array('context' => 'Date repeat')).'</b></div>';
-  $never_suffix = '<div class="description">'.t('Example: 1 week or 1 Day', array(), array('context' => 'Date repeat')).'</div></div>';
-
-  $never_form_element = array(
-    '#type' => 'textfield',
-    '#title' => t('Never', array(), array('context' => 'Date repeat')),
-    '#default_value' => $never,
-    '#prefix' => $never_prefix,
-    '#suffix' => $never_suffix,
-    '#size' => 10,
-    '#maxlength' => 10,
-  );
-
   $range_of_repeat_default = 'COUNT';
   if (!empty($until)) {
     $range_of_repeat_default = 'UNTIL';
   }
-  if (!empty($never)) {
-    $range_of_repeat_default = 'NEVER';
-  }
-
   $element['range_of_repeat'] = array(
     '#type' => 'date_repeat_form_element_radios',
     '#tree' => TRUE,
@@ -564,11 +542,9 @@ function _date_repeat_rrule_process($element, &$form_state, $form) {
     '#options' => array(
       'COUNT' => t('Count'),
       'UNTIL' => t('Until'),
-      'NEVER' => t('Never'),
     ),
     'count_child' => $count_form_element,
     'until_child' => $until_form_element,
-    'never_child' => $never_form_element,
     '#div_classes' => array(
       'container-inline count',
       "until widget-{$element['#date_repeat_widget']} label-{$element['#date_label_position']}",
@@ -919,15 +895,11 @@ function date_repeat_merge($form_values, $element) {
       case 'UNTIL':
         $form_values['UNTIL'] = $form_values['until_child'];
         break;
-      case 'NEVER':
-        $form_values['NEVER'] = $form_values['never_child'];
-        break;
     }
   }
 
   unset($form_values['count_child']);
   unset($form_values['until_child']);
-  unset($form_values['never_child']);
 
   if (array_key_exists('BYDAY', $form_values) && is_array($form_values['BYDAY'])) {
     unset($form_values['BYDAY']['']);
