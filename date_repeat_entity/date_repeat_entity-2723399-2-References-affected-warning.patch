@@ -1,0 +1,134 @@
+From 90b6072f05299a98aa8e3a2241b753f2b59851b9 Mon Sep 17 00:00:00 2001
+From: Axel Rutz <axel.rutz@clever-systems.net>
+Date: Wed, 11 May 2016 20:56:06 +0200
+Subject: [PATCH] Issue #2723399 by axel.rutz: "References affected" warning
+ makes bad UX
+
+---
+ date_repeat_entity.api.php                         | 14 ++++++++
+ date_repeat_entity.module                          | 22 ++-----------
+ .../date_repeat_entity_reference_warnings.info     |  5 +++
+ .../date_repeat_entity_reference_warnings.module   | 38 ++++++++++++++++++++++
+ 4 files changed, 59 insertions(+), 20 deletions(-)
+ create mode 100644 modules/date_repeat_entity_reference_warnings/date_repeat_entity_reference_warnings.info
+ create mode 100644 modules/date_repeat_entity_reference_warnings/date_repeat_entity_reference_warnings.module
+
+diff --git a/date_repeat_entity.api.php b/date_repeat_entity.api.php
+index 5279673..0414090 100644
+--- a/date_repeat_entity.api.php
++++ b/date_repeat_entity.api.php
+@@ -97,3 +97,17 @@ function hook_repeating_date_update($date_entity, $updated_entity, $entity_type
+   // Update date entity title from updated entity.
+   $date_entity_wrapper->title = $updated_entity_wrapper->label();
+ }
++
++/**
++ * Alters the confirmation message.
++ *
++ * @param $form
++ * @param $form_state
++ */
++function hook_date_repeat_entity_confirmation_alter(&$form, $form_state) {
++    // Add markup for warning message to form.
++    $form['update-buttons']['additional-text'] = array(
++      '#markup' => t('Additional note'),
++      '#weight' => 20,
++    );
++}
+diff --git a/date_repeat_entity.module b/date_repeat_entity.module
+index 3ac2b1a..366b0a6 100644
+--- a/date_repeat_entity.module
++++ b/date_repeat_entity.module
+@@ -131,26 +131,6 @@ function date_repeat_entity_add_confirmation_buttons(&$form, $form_state) {
+ 
+   $update_buttons_element_weight = 0;
+ 
+-  // Determine if there any references entities that will be affected by
+-  // update.
+-  $referenced_entities = date_repeat_entity_get_referenced_entities($form, $form_state);
+-  if (!empty($referenced_entities)) {
+-
+-    // Warn user.
+-    $referenced_entities_message = '<p>';
+-    $referenced_entities_message .= t('References to one or more entities may be affected by this action.');
+-    $referenced_entities_message .= '</p>';
+-
+-    $header = array(t('Referencing Field'), t('Number of Entities Referenced'));
+-    $referenced_entities_message .= theme('table', array('header' => $header, 'rows' => $referenced_entities));
+-
+-    // Add markup for warning message to form.
+-    $update_buttons_element_weight++;
+-    $form['update-buttons']['update-text'] = array(
+-      '#markup' => $referenced_entities_message,
+-    );
+-  }
+-
+   // Create button that gives user option of updating current and future
+   // dates associated with an entity.  Prepend our callback to the
+   // default submit action callbacks.
+@@ -219,6 +199,8 @@ function date_repeat_entity_add_confirmation_buttons(&$form, $form_state) {
+     '#validate' => array(),
+     '#weight' => $update_buttons_element_weight,
+   );
++
++  drupal_alter('date_repeat_entity_confirmation', $form, $form_state);
+ }
+ 
+ /**
+diff --git a/modules/date_repeat_entity_reference_warnings/date_repeat_entity_reference_warnings.info b/modules/date_repeat_entity_reference_warnings/date_repeat_entity_reference_warnings.info
+new file mode 100644
+index 0000000..367d939
+--- /dev/null
++++ b/modules/date_repeat_entity_reference_warnings/date_repeat_entity_reference_warnings.info
+@@ -0,0 +1,5 @@
++name = Date Repeat Entity - Reference Warnings
++description = Warns about referenced entities.
++core = 7.x
++package = Date/Time
++dependencies[] = date_repeat_entity
+diff --git a/modules/date_repeat_entity_reference_warnings/date_repeat_entity_reference_warnings.module b/modules/date_repeat_entity_reference_warnings/date_repeat_entity_reference_warnings.module
+new file mode 100644
+index 0000000..ab6229d
+--- /dev/null
++++ b/modules/date_repeat_entity_reference_warnings/date_repeat_entity_reference_warnings.module
+@@ -0,0 +1,38 @@
++<?php
++/**
++ * @file
++ * Warns about referenced entities.
++ */
++
++/**
++ * Implements hook_date_repeat_entity_confirmation_alter().
++ *
++ * @param $form
++ * @param $form_state
++ * @throws \Exception
++ */
++function date_repeat_entity_reference_warnings_date_repeat_entity_confirmation_alter(&$form, $form_state) {
++  // Determine if there any references entities that will be affected by
++  // update.
++  $referenced_entities = date_repeat_entity_get_referenced_entities($form, $form_state);
++  if (!empty($referenced_entities)) {
++
++    // Warn user.
++    $referenced_entities_message = '<p>';
++    $referenced_entities_message .= t('References to one or more entities may be affected by this action.');
++    $referenced_entities_message .= '</p>';
++
++    $header = array(t('Referencing Field'), t('Number of Entities Referenced'));
++    $referenced_entities_message .= theme('table', array(
++      'header' => $header,
++      'rows' => $referenced_entities
++    ));
++
++    // Add markup for warning message to form.
++    $form['update-buttons']['update-text'] = array(
++      '#markup' => $referenced_entities_message,
++      '#weight' => -10,
++    );
++  }
++}
++
+-- 
+2.1.4
