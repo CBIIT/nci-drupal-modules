@@ -1,0 +1,38 @@
+<?php
+/**
+ * @file
+ * Warns about referenced entities.
+ */
+
+/**
+ * Implements hook_date_repeat_entity_confirmation_alter().
+ *
+ * @param $form
+ * @param $form_state
+ * @throws \Exception
+ */
+function date_repeat_entity_reference_warnings_date_repeat_entity_confirmation_alter(&$form, $form_state) {
+  // Determine if there any references entities that will be affected by
+  // update.
+  $referenced_entities = date_repeat_entity_get_referenced_entities($form, $form_state);
+  if (!empty($referenced_entities)) {
+
+    // Warn user.
+    $referenced_entities_message = '<p>';
+    $referenced_entities_message .= t('References to one or more entities may be affected by this action.');
+    $referenced_entities_message .= '</p>';
+
+    $header = array(t('Referencing Field'), t('Number of Entities Referenced'));
+    $referenced_entities_message .= theme('table', array(
+      'header' => $header,
+      'rows' => $referenced_entities
+    ));
+
+    // Add markup for warning message to form.
+    $form['update-buttons']['update-text'] = array(
+      '#markup' => $referenced_entities_message,
+      '#weight' => -10,
+    );
+  }
+}
+

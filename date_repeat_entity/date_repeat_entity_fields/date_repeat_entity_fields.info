@@ -1,0 +1,6 @@
+name = Date Repeat Entity - Copy Fields
+description = Copies a configurable set of fields to replicated entities.
+core = 7.x
+package = Date/Time
+dependencies[] = date_repeat_entity
+configure = admin/config/date/date_repeat_entity
