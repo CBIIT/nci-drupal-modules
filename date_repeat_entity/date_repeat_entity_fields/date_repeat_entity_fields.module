@@ -1,0 +1,97 @@
+<?php
+
+/**
+ * @file
+ * Copies a configurable set of fields to replicated entities.
+ */
+
+/**
+ * Implements hook_repeating_date_update().
+ *
+ * Copies the properties. @see date_repeat_entity_repeating_date_update().
+ */
+function date_repeat_entity_fields_repeating_date_update($date_entity, $updated_entity, $entity_type = 'node') {
+  /** @var \EntityDrupalWrapper $date_entity_wrapper */
+  $date_entity_wrapper = entity_metadata_wrapper($entity_type, $date_entity);
+  /** @var \EntityDrupalWrapper $updated_entity_wrapper */
+  $updated_entity_wrapper = entity_metadata_wrapper($entity_type, $updated_entity);
+
+  $bundle_name = $date_entity_wrapper->getBundle();
+  $selected_properties_by_bundle = variable_get('date_repeat_entity_field_bundle_properties', array());
+  $selected_properties_by_bundle += array($bundle_name => array());
+  $selected_properties = $selected_properties_by_bundle[$bundle_name];
+
+  $property_info = $date_entity_wrapper->getPropertyInfo();
+  foreach (array_filter($selected_properties) as $property_name => $_) {
+    if (isset($property_info[$property_name])) {
+      $date_entity_wrapper->$property_name = $updated_entity_wrapper->$property_name->value();
+    }
+  }
+}
+
+/**
+ * Implements hook_form_FORM_ID_alter() for @see date_repeat_entity_admin_settings().
+ *
+ * Add form to select properties to replicate.
+ */
+function date_repeat_entity_fields_form_date_repeat_entity_admin_settings_alter(&$form, &$form_state, $form_id) {
+  $subform =& $form['date_repeat_entity_field_bundle_properties'];
+  $subform = array(
+    '#tree' => TRUE,
+  );
+  $selected_properties_by_bundle = variable_get('date_repeat_entity_field_bundle_properties', array());
+  $bundles_selected = variable_get('date_repeat_entity_bundles_available', array());
+  $bundle_labels = node_type_get_names();
+
+  foreach (array_filter($bundles_selected) as $bundle_name => $_) {
+    $subform[$bundle_name] = array(
+      '#type' => 'fieldset',
+      '#title' => t('Properties to replicate for %bundle', array('%bundle' => $bundle_labels[$bundle_name])),
+      '#collapsible' => TRUE,
+      '#collapsed' => TRUE,
+    );
+    $all_bundle_properties = date_repeat_entity_fields_get_bundle_properties($bundle_name);
+    $selected_properties_by_bundle += array($bundle_name => array());
+    foreach ($all_bundle_properties as $property_name => $property_info) {
+      $property_label = $property_info['label'];
+      $selected = !empty($selected_properties_by_bundle[$bundle_name][$property_name]);
+      $subform[$bundle_name][$property_name] = array(
+        '#type' => 'checkbox',
+        '#title' => format_string('@label (@name)', array('@name' => $property_name, '@label' => $property_label)),
+        '#default_value' => $selected,
+      );
+    }
+  }
+}
+
+/**
+ * Get node bundle properties.
+ *
+ * @param $bundle_name
+ * @return array
+ */
+function date_repeat_entity_fields_get_bundle_properties($bundle_name) {
+  /** @var \EntityDrupalWrapper $bundle_wrapper */
+  $bundle_wrapper = entity_metadata_wrapper('node', NULL, array('bundle' => $bundle_name));
+  $properties = $bundle_wrapper->getPropertyInfo();
+
+  unset($properties[DATE_REPEAT_ENTITY_FIELD_MASTER_UUID]);
+  unset($properties[DATE_REPEAT_ENTITY_FIELD_CLONE_STATE]);
+  unset($properties['type']);
+  unset($properties['language']);
+  unset($properties['created']);
+
+  // Make sure utility functions are available.
+  module_load_include('inc', 'date_repeat_entity', 'includes/date_repeat_entity.utility');
+  $repeating_date_field = date_repeat_entity_get_repeating_date_field('node', $bundle_name);
+  if (isset($repeating_date_field['field_name'])) {
+    unset($properties[$repeating_date_field['field_name']]);
+  }
+
+  $properties = array_filter($properties, function($v){
+    return !empty($v['setter callback']);
+  });
+  ksort($properties);
+  return $properties;
+}
+
