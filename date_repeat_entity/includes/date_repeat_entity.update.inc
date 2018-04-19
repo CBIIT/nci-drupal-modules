@@ -246,8 +246,19 @@ function date_repeat_entity_repeating_date_update($date_entity, $updated_entity,
   $date_entity_wrapper = entity_metadata_wrapper($entity_type, $date_entity);
   $updated_entity_wrapper = entity_metadata_wrapper($entity_type, $updated_entity);
 
+  $bundle = $updated_entity_wrapper->getBundle();
+
   // Update date entity title from updated entity.
   $date_entity_wrapper->title = $updated_entity_wrapper->label();
+
+  $fields_info = field_info_instances($entity_type, $bundle);
+  foreach ($fields_info as $field_name => $value) {
+    // Skip the fields that are date related.
+    $findme = 'date';
+    if (strpos($field_name, $findme) === FALSE) {
+      $date_entity_wrapper->$field_name = $updated_entity_wrapper->$field_name->value();
+    }
+  }
 }
 
 /**
