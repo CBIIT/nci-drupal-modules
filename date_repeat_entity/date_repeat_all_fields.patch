@@ -1,3 +1,27 @@
+diff --git a/date_repeat_entity/includes/date_repeat_entity.update.inc b/date_repeat_entity/includes/date_repeat_entity.update.inc
+index 47784a7..3661dfc 100644
+--- a/date_repeat_entity/includes/date_repeat_entity.update.inc
++++ b/date_repeat_entity/includes/date_repeat_entity.update.inc
+@@ -246,8 +246,19 @@ function date_repeat_entity_repeating_date_update($date_entity, $updated_entity,
+   $date_entity_wrapper = entity_metadata_wrapper($entity_type, $date_entity);
+   $updated_entity_wrapper = entity_metadata_wrapper($entity_type, $updated_entity);
+
++  $bundle = $updated_entity_wrapper->getBundle();
++
+   // Update date entity title from updated entity.
+   $date_entity_wrapper->title = $updated_entity_wrapper->label();
++
++  $fields_info = field_info_instances($entity_type, $bundle);
++  foreach ($fields_info as $field_name => $value) {
++    // Skip the fields that are date related.
++    $findme = 'date';
++    if (strpos($field_name, $findme) === FALSE) {
++      $date_entity_wrapper->$field_name = $updated_entity_wrapper->$field_name->value();
++    }
++  }
+ }
+
+ /**
 diff --git a/date_repeat_entity/date_repeat_entity.api.php b/date_repeat_entity/date_repeat_entity.api.php
 index 5279673..069bb75 100644
 --- a/date_repeat_entity/date_repeat_entity.api.php
@@ -5,7 +29,7 @@ index 5279673..069bb75 100644
 @@ -94,6 +94,31 @@ function hook_repeating_date_update($date_entity, $updated_entity, $entity_type
    $date_entity_wrapper = entity_metadata_wrapper($entity_type, $date_entity);
    $updated_entity_wrapper = entity_metadata_wrapper($entity_type, $updated_entity);
- 
+
 +  $bundle = $updated_entity_wrapper->getBundle();
 +
    // Update date entity title from updated entity.
