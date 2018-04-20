@@ -131,16 +131,18 @@ function date_repeat_entity_add_confirmation_buttons(&$form, $form_state) {
 
   $update_buttons_element_weight = 0;
 
-  // Warn user.
-  $referenced_entities_message = '<p style="color: #fff; font-weight: 700; background-color: red; font-size: 17px;">';
-  $referenced_entities_message .= t('**In order to update the current event\'s dates, uncheck the Repeat checkbox.');
-  $referenced_entities_message .= '</p>';
+  if ($form_state['values']['field_event_date_time']['und']['0']['rrule'] != '' && $form_state['values']['op'] == 'Save') {
+    // Warn user.
+    $referenced_entities_message = '<p style="color: #fff; font-weight: 700; background-color: red; font-size: 17px;">';
+    $referenced_entities_message .= t('**In order to update the current event\'s dates, uncheck the Repeat checkbox.');
+    $referenced_entities_message .= '</p>';
 
-  // Add markup for warning message to form.
-  $update_buttons_element_weight++;
-  $form['update-buttons']['update-text'] = array(
-    '#markup' => $referenced_entities_message,
-  );
+    // Add markup for warning message to form.
+    $update_buttons_element_weight++;
+    $form['update-buttons']['update-text'] = array(
+      '#markup' => $referenced_entities_message,
+    );
+  }
 
   // Create button that gives user option of updating current and future
   // dates associated with an entity.  Prepend our callback to the
@@ -169,9 +171,12 @@ function date_repeat_entity_add_confirmation_buttons(&$form, $form_state) {
 
   // If there are related entities we need to give options to user.
   if (count($related_entity_ids) > 1) {
-
-    // Update default save confirmation button.
-    $form['update-buttons']['update-current']['#value'] = t('@action current (**uncheck repeat)', array('@action' => $action));
+    if ($form_state['values']['field_event_date_time']['und']['0']['rrule'] != '' && $form_state['values']['op'] == 'Save') {
+      // Update default save confirmation button.
+      $form['update-buttons']['update-current']['#value'] = t('@action current (**uncheck repeat)', array('@action' => $action));
+    } else {
+      $form['update-buttons']['update-current']['#value'] = t('@action current', array('@action' => $action));
+    }
 
     // Create button that gives user option of updating current and future
     // dates associated with an entity.  Prepend our callback to the
