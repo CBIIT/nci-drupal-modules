@@ -134,7 +134,7 @@ function date_repeat_entity_add_confirmation_buttons(&$form, $form_state) {
   if ($node_info->field_event_date_time['und']['0']['rrule'] != '' && $form_state['values']['op'] == 'Save') {
     // Warn user.
     $referenced_entities_message = '<p style="color: #333; font-weight: 600; background-color: #fff; font-size: 17px;">';
-    $referenced_entities_message .= t('If you must change the current event’s dates, uncheck the <i>Repeat</i> checkbox. Otherwise, the events in the series may be recreated.');
+    $referenced_entities_message .= t('If you must change the current event’s dates, uncheck the <em>Repeat</em> checkbox. Otherwise, the events in the series may be recreated.');
     $referenced_entities_message .= '</p>';
     
     // Add markup for warning message to form.
