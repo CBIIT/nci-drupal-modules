@@ -244,19 +244,19 @@ function date_repeat_rrule_description($rrule, $format = 'M d, Y') {
   ) {
     switch ($rrule['FREQ']) {
       case 'WEEKLY':
-        $description['!interval'] = format_plural($rrule['INTERVAL'], 'every week,', 'every @count weeks') . ' ';
+        $description['!interval'] = format_plural($rrule['INTERVAL'], 'every week', 'every @count weeks') . ' ';
         break;
 
       case 'MONTHLY':
-        $description['!interval'] = format_plural($rrule['INTERVAL'], 'every month,', 'every @count months') . ' ';
+        $description['!interval'] = format_plural($rrule['INTERVAL'], 'every month', 'every @count months') . ' ';
         break;
 
       case 'YEARLY':
-        $description['!interval'] = format_plural($rrule['INTERVAL'], 'every year,', 'every @count years') . ' ';
+        $description['!interval'] = format_plural($rrule['INTERVAL'], 'every year', 'every @count years') . ' ';
         break;
 
       default:
-        $description['!interval'] = format_plural($rrule['INTERVAL'], 'every day,', 'every @count days') . ' ';
+        $description['!interval'] = format_plural($rrule['INTERVAL'], 'every day', 'every @count days') . ' ';
         break;
     }
   }
