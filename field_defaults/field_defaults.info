@@ -1,0 +1,12 @@
+name = Field Defaults
+description = Adds or Updates default field values on existing content
+package = Fields
+core = 7.x
+dependencies[] = field
+
+; Information added by Drupal.org packaging script on 2017-02-08
+version = "7.x-1.2"
+core = "7.x"
+project = "field_defaults"
+datestamp = "1486587259"
+
