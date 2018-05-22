@@ -1,0 +1,11 @@
+name = Crazy Egg
+description = The official Crazy Egg Plugin for Drupal. The easiest, free way to add your Crazy Egg tracking script to your Drupal site.
+core = 7.x
+version = 7.x-1.1
+configure = admin/config/system/crazyegg
+; Information added by Drupal.org packaging script on 2018-03-10
+version = "7.x-1.1"
+core = "7.x"
+project = "crazyegg"
+datestamp = "1520698387"
+

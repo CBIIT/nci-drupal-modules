@@ -1,0 +1,24 @@
+<?php
+
+/**
+ * @file
+ * Contains install and update functions for Crazy Egg.
+ */
+
+/**
+ * Implements hook_uninstall().
+ */
+function crazyegg_uninstall() {
+  $variables = array(
+    'crazyegg_account_id',
+    'crazyegg_enabled',
+    'crazyegg_js_scope',
+    'crazyegg_roles_excluded',
+    'crazyegg_paths',
+  );
+
+  // Delete all CrazyEgg variables.
+  foreach ($variables as $var) {
+    variable_del($var);
+  }
+}

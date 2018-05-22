@@ -1,0 +1,99 @@
+<?php
+
+/**
+ * @file
+ *   The official Crazy Egg Plugin for Drupal.
+ *   The easiest, free way to add your Crazy Egg tracking script to your Drupal site.
+ *   See https://www.crazyegg.com for details.
+ */
+
+/**
+ * Implements hook_permission().
+ */
+function crazyegg_permission() {
+  return array(
+    'administer crazy egg' => array(
+      'title' => t('Administer Crazy Egg'),
+      'description' => t('Administer account settings and visibility of Crazy Egg on your site.'),
+    ),
+  );
+}
+
+/**
+ * Implements hook_menu().
+ */
+function crazyegg_menu() {
+  $items['admin/config/system/crazyegg'] = array(
+    'title' => 'Crazy Egg',
+    'description' => 'Configure Crazy Egg on your website.',
+    'page callback' => 'drupal_get_form',
+    'page arguments' => array('crazyegg_admin_settings_form'),
+    'access arguments' => array('administer crazy egg'),
+    'type' => MENU_NORMAL_ITEM,
+    'file' => 'includes/admin.inc',
+  );
+
+  return $items;
+}
+
+/**
+ * Implements hook_help().
+ */
+function crazyegg_help($path, $arg) {
+  switch ($path) {
+    case 'admin/config/system/crazyegg':
+      return t('<img src="@logo" style="float: right;" alt="Crazy Egg" />'
+          . '<a href="@url">Crazy Egg</a> is an analytics tool that provides website heatmaps and eye tracking.',
+          array(
+              '@url' => 'https://www.crazyegg.com',
+              '@logo' => 'http://ceblog.s3.amazonaws.com/wp-content/uploads/2015/06/Crazy-Egg-logo-small.png'
+          )
+      );
+  }
+}
+
+/**
+ * Implements hook_page_alter()
+ */
+function crazyegg_page_alter(&$page) {
+  $account_id = variable_get('crazyegg_account_id', '');
+  $crazyegg_enabled = variable_get('crazyegg_enabled', TRUE);
+
+  if ($crazyegg_enabled && is_numeric($account_id) && is_role_allowed() && is_page_allowed()) {
+    $account_path = str_pad($account_id, 8, '0', STR_PAD_LEFT);
+    $account_path = drupal_substr($account_path, 0, 4) . '/' . drupal_substr($account_path, 4, 8);
+
+    $script_path = '//script.crazyegg.com/pages/scripts/' . $account_path . '.js';
+    $crazyegg_scope = variable_get('crazyegg_js_scope', 'header');
+
+    drupal_add_js($script_path, array(
+        'type' => 'external',
+        'scope' => $crazyegg_scope,
+        'weight' => 0,
+        'defer' => TRUE,
+    ));
+  }
+}
+
+function is_role_allowed() {
+  global $user;
+  $excluded_roles = variable_get('crazyegg_roles_excluded', array());
+  
+  foreach ($user->roles as $rid => $role) {
+    if (in_array($rid, $excluded_roles)) {
+      return FALSE;
+    }
+  }
+  
+  return TRUE;
+}
+
+function is_page_allowed() {
+  $current_path = current_path();
+  $current_path_alias = drupal_lookup_path('alias', $current_path);
+  $crazyegg_paths = trim(variable_get('crazyegg_paths', ''));
+
+  return empty($crazyegg_paths)
+    || drupal_match_path($current_path, $crazyegg_paths)
+    || drupal_match_path($current_path_alias, $crazyegg_paths);
+}
