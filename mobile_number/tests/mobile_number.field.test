@@ -1,0 +1,240 @@
+<?php
+
+/**
+ * @file
+ * Test cases file.
+ */
+
+include DRUPAL_ROOT . '/vendor/autoload.php';
+
+/**
+ * Class for testing mobile_number field.
+ */
+class MobileNumberFieldTestCase extends DrupalWebTestCase {
+
+  /**
+   * Info.
+   */
+  public static function getInfo() {
+    return array(
+      'name' => 'Mobile number field',
+      'description' => 'Mobile number field functionality.',
+      'group' => 'Mobile Number',
+    );
+  }
+
+  /**
+   * Setup.
+   */
+  public function setUp() {
+    parent::setUp(array(
+      'mobile_number',
+      'sms',
+    ));
+  }
+
+  /**
+   * Test number validation.
+   */
+  public function testNumberUniqueness() {
+    $tries = array(
+      'New values',
+      'Resubmit values',
+    );
+
+    $value_count = array(
+      1 => 'One value',
+      2 => 'Two values',
+    );
+
+    $number_types = array(
+      'Unverified',
+      'Verified',
+    );
+
+    $unique_types = array(
+      MOBILE_NUMBER_UNIQUE_YES => 'Unique',
+      MOBILE_NUMBER_UNIQUE_YES_VERIFIED => 'Unique verified',
+    );
+
+    foreach ($value_count as $count => $count_text) {
+      foreach ($unique_types as $unique => $unique_text) {
+        $name = 'unique_' . $unique . '_count_' . $count;
+        $this->drupalCreateContentType(array('type' => $name));
+        $this->createField($name, "field_$name", $unique, $count);
+      }
+    }
+
+    // Check for in-field duplicates.
+    foreach ($unique_types as $unique => $unique_text) {
+      $name = 'unique_' . $unique . '_count_2';
+      foreach ($number_types as $verified => $verified_text) {
+        foreach ($number_types as $verified2 => $verified_text2) {
+          $errors = $this->createMobileNumberNode($name, "+9725411111$verified$verified2", $verified, $verified2);
+          $valid = FALSE;
+          switch ($unique) {
+            case MOBILE_NUMBER_UNIQUE_YES_VERIFIED:
+              $valid = !($verified || $verified2);
+              break;
+
+          }
+          $valid_text = $valid ? 'is unique' : 'is not unique';
+          $this->assertTrue($valid == !$errors, "New values, Two values, $unique_text, 1 = $verified_text, 2 = $verified_text2: $valid_text.", 'Number Uniqueness');
+        }
+      }
+    }
+
+    // Check for inter-entity multi-value duplicates.
+    foreach ($unique_types as $unique => $unique_text) {
+      $name = 'unique_' . $unique . '_count_2';
+      $count = 0;
+      foreach ($number_types as $existing_verified => $existing_verified_text) {
+        foreach ($number_types as $verified => $verified_text) {
+          foreach ($number_types as $verified2 => $verified_text2) {
+            $this->createMobileNumberNode($name, "+972542222$existing_verified$verified$verified2", $existing_verified);
+            $errors = $this->createMobileNumberNode($name, "+972542222$existing_verified$verified$verified2", $verified, $verified2);
+            $valid = FALSE;
+            switch ($unique) {
+              case MOBILE_NUMBER_UNIQUE_YES_VERIFIED:
+                $valid = (($verified + $verified2 + $existing_verified) < 2) && !($verified || $verified2);
+                break;
+
+            }
+            $valid_text = $valid ? 'is unique' : 'is not unique';
+            $this->assertTrue($valid == !$errors, "Resubmit values, Two values, $unique_text, 1 = $verified_text, 2 = $verified_text2: $valid_text.", 'Number Uniqueness');
+            $count++;
+          }
+        }
+      }
+    }
+
+    // Check for inter-entity single-value duplicates.
+    foreach ($unique_types as $unique => $unique_text) {
+      $name = 'unique_' . $unique . '_count_1';
+      foreach ($number_types as $existing_verified => $existing_verified_text) {
+        foreach ($number_types as $verified => $verified_text) {
+          $number = "+9725433333$existing_verified$verified";
+          $this->createMobileNumberNode($name, $number, $existing_verified);
+          $errors = $this->createMobileNumberNode($name, $number, $verified);
+          $valid = FALSE;
+          switch ($unique) {
+            case MOBILE_NUMBER_UNIQUE_YES_VERIFIED:
+              $valid = ($verified + $existing_verified) < 2;
+              break;
+          }
+          $valid_text = $valid ? 'is unique' : 'is not unique';
+          $this->assertTrue($valid == !$errors, "Resubmit values, One value, $unique_text, presaved = $existing_verified_text, new = $verified_text, $valid_text.", 'Number Uniqueness');
+        }
+      }
+    }
+  }
+
+  /**
+   * Create node with mobile number(s).
+   */
+  public function createMobileNumberNode($name, $number, $verified, $verified2 = NULL) {
+    $values = array();
+    $values["field_$name"][LANGUAGE_NONE][0] = array(
+      'mobile' => $number,
+      'country-code' => 'IL',
+    );
+    if ($verified) {
+      $values["field_$name"][LANGUAGE_NONE][0]['verification_code'] = $code = MobileNumber::generateVerificationCode();
+      $values["field_$name"][LANGUAGE_NONE][0]['verification_token'] = MobileNumber::registerVerificationCode($code, $number);
+    }
+    if (isset($verified2)) {
+      $values["field_$name"][LANGUAGE_NONE][1] = array(
+        'mobile' => $number,
+        'country-code' => 'IL',
+      );
+      if ($verified2) {
+        $values["field_$name"][LANGUAGE_NONE][1]['verification_code'] = $code = MobileNumber::generateVerificationCode();
+        $values["field_$name"][LANGUAGE_NONE][1]['verification_token'] = MobileNumber::registerVerificationCode($code, $number);
+      }
+    }
+
+    return $this->submitNodeForm($name, $values, $number);
+  }
+
+  /**
+   * Submit node form.
+   */
+  public function submitNodeForm($node_type, $values, $number) {
+
+    // Load the required includes for drupal_form_submit.
+    module_load_include('inc', 'node', 'node.pages');
+
+    $values += array(
+      'body'      => array(LANGUAGE_NONE => array(array())),
+      'title'     => $this->randomName(8),
+      'comment'   => 2,
+      'changed'   => REQUEST_TIME,
+      'moderate'  => 0,
+      'promote'   => 0,
+      'revision'  => 1,
+      'log'       => '',
+      'status'    => 1,
+      'sticky'    => 0,
+      'type'      => $node_type,
+      'revisions' => NULL,
+      'language'  => LANGUAGE_NONE,
+    );
+
+    $node = $values;
+
+    $stub_node = (object) array_intersect_key($node, array_flip(array('type', 'language')));
+    $stub_form_state = array(
+      'no_cache' => TRUE,
+      'build_info' => array(
+        'args' => array((object) $stub_node),
+      ),
+    );
+
+    // Setup form_state.
+    $form_state = array();
+    $form_state['values'] = $values;
+    $form_state['values']['op'] = t('Save');
+    $form_state['programmed_bypass_access_check'] = TRUE;
+    $form_state['no_cache'] = TRUE;
+
+    $stub_form = drupal_build_form($node_type . '_node_form', $stub_form_state);
+    $form_state['triggering_element'] = $stub_form['actions']['submit'];
+
+    drupal_form_submit($node_type . '_node_form', $form_state, (object) $node);
+
+    unset($_SESSION['mobile_number_verification'][$number]['verified']);
+
+    return form_get_errors();
+  }
+
+  /**
+   * Create mobile number field.
+   */
+  public function createField($content_type, $field_name, $unique, $cardinality) {
+    $field = array(
+      'field_name' => $field_name,
+      'type' => 'mobile_number',
+      'settings' => array('unique' => $unique),
+      'cardinality' => $cardinality,
+    );
+    field_create_field($field);
+
+    // Create the instance on the bundle.
+    $instance = array(
+      'field_name' => $field_name,
+      'entity_type' => 'node',
+      'label' => 'Mobile Number',
+      'bundle' => $content_type,
+      // If you don't set the "required" property then the field wont be required by default.
+      'required' => TRUE,
+      'widget' => array(
+        'type' => 'mobile_number_default',
+        'settings' => array(
+          'verify' => MOBILE_NUMBER_VERIFY_OPTIONAL,
+        ),
+      ),
+    );
+    field_create_instance($instance);
+  }
+
+}

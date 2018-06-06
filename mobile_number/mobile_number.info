@@ -1,0 +1,24 @@
+name = Mobile Number
+description = Mobile number field with sms verification.
+core = 7.x
+
+files[] = include/mobile_number.libphonenumber.inc
+files[] = src/MobileNumberInterface.php
+files[] = src/MobileNumber.php
+files[] = src/MobileNumberTfa.php
+
+files[] = mobile_number.migrate.inc
+
+files[] = tests/mobile_number.element.test
+files[] = tests/mobile_number.class.test
+files[] = tests/mobile_number.field.test
+
+dependencies[] = 'libraries'
+
+test_dependencies[] = smsframework:sms
+
+; Information added by Drupal.org packaging script on 2018-04-21
+version = "7.x-1.0-alpha5+17-dev"
+core = "7.x"
+project = "mobile_number"
+datestamp = "1524321486"

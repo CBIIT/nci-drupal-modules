@@ -1,0 +1,253 @@
+<?php
+
+/**
+ * @file
+ * Test cases file.
+ */
+
+include DRUPAL_ROOT . '/vendor/autoload.php';
+
+/**
+ * Class for testing mobile_number element.
+ */
+class MobileNumberElementTestCase extends DrupalWebTestCase {
+
+  public $user;
+
+  /**
+   * Info.
+   */
+  public static function getInfo() {
+    return array(
+      'name' => 'Mobile number element',
+      'description' => 'Mobile number form element functionality.',
+      'group' => 'Mobile Number',
+    );
+  }
+
+  /**
+   * Setup.
+   */
+  public function setUp() {
+    parent::setUp(array(
+      'mobile_number',
+      'sms',
+    ));
+  }
+
+  /**
+   * Test number validation.
+   */
+  public function testNumberValidity() {
+
+    $local_numbers = array(
+      '0541234567' => 'Valid IL',
+      '111' => 'Invalid IL',
+      NULL => 'Empty',
+    );
+
+    $countries = array(
+      'IL' => 'IL',
+      'US' => 'US',
+      NULL => 'Empty',
+    );
+
+    $allowed_countries = array(
+      'IL' => array('IL' => 'IL'),
+      'US' => array('US' => 'US'),
+      'All' => array(),
+    );
+
+    $element = array(
+      '#type' => 'mobile_number',
+      '#title' => 'M',
+      '#required' => TRUE,
+      '#mobile_number' => array(),
+    );
+
+    $input = array(
+      'country-code' => 'IL',
+      'mobile' => '0541234567',
+    );
+
+    foreach ($allowed_countries as $type => $allowed) {
+      $element['#mobile_number']['allowed_countries'] = $allowed;
+      $errors = $this->submitFormElement($element, $input);
+      $success = $type == 'US' ? 'failure' : 'success';
+      $this->assertTrue($errors == ($type == 'US'), "IL mobile number with $type allowed: $success.", 'Number Validity');
+    }
+
+    unset($element['#mobile_number']['allowed_countries']);
+
+    foreach ($local_numbers as $ln => $local_number) {
+      foreach ($countries as $c => $country) {
+        $input['country-code'] = $c;
+        $input['mobile'] = $ln;
+
+        $errors = $this->submitFormElement($element, $input);
+        $valid = '0541234567' == $ln && 'IL' == $c;
+
+        $success = $valid ? 'Success' : 'Failure';
+        $this->assertTrue($valid == !$errors, "$country country, $local_number local number: $success.", 'Number Validity');
+      }
+    }
+  }
+
+  /**
+   * Test number verification.
+   */
+  public function testVerification() {
+    $number = '0541234567';
+    $country = 'IL';
+    $value = '+972541234567';
+    $code = MobileNumber::generateVerificationCode();
+    $token = MobileNumber::registerVerificationCode($code, $value);
+
+    $tokens = array(
+      'abc' => 'Wrong token',
+      NULL => 'No token',
+      $token => 'Correct token',
+    );
+
+    $codes = array(
+      '000' => 'Wrong code',
+      NULL => 'No code',
+      $code => 'Correct code',
+    );
+  
+    $required_states = array(
+      TRUE => 'Required',
+      FALSE => 'Not required',
+    );
+    
+    $required_inputs = array(
+      TRUE => array(
+        'country-code' => $country,
+        'mobile' => $number,
+      ),
+      FALSE => array(
+        'country-code' => $country,
+        'mobile' => '',
+      ),
+    );
+
+    $element = array(
+      '#type' => 'mobile_number',
+      '#title' => 'M',
+      '#mobile_number' => array('verify' => MOBILE_NUMBER_VERIFY_OPTIONAL),
+    );
+    
+    
+    foreach($required_states AS $required => $required_msg) {
+      $element['#required'] = $required;
+      foreach($required_inputs AS $has_value => $input) {
+        $errors = $this->submitFormElement($element, $input, $value);
+        $this->assertTrue(
+          !!$errors == ($required && !$has_value),
+          "Input is required: " . ($required ? 'TRUE' : 'FALSE') .
+          ', Input has value: ' . ($has_value ? 'TRUE' : 'FALSE') .
+          ', has error: ' . (($required && !$has_value) ? 'TRUE' : 'FALSE'),
+          'Number Verification');
+      }
+    }
+  
+    $element['#mobile_number']['verify'] = MOBILE_NUMBER_VERIFY_REQUIRED;
+    $input['country-code'] = $country;
+    $input['mobile'] = $number;
+    $errors = $this->submitFormElement($element, $input, $value);
+    $this->assertTrue(!$errors, "Bypass verification requirement.", 'Number Verification');
+
+    global $user;
+    $user = $this->drupalCreateUser(array());
+
+    $element['#mobile_number']['verify'] = MOBILE_NUMBER_VERIFY_OPTIONAL;
+    $errors = $this->submitFormElement($element, $input, $value);
+    $this->assertTrue(!$errors, "Optional verification allowed unverified.", 'Number Verification');
+
+    $element['#mobile_number']['verify'] = MOBILE_NUMBER_VERIFY_REQUIRED;
+    foreach ($tokens as $input_token => $t) {
+      foreach ($codes as $input_code => $c) {
+        $input['country-code'] = $country;
+        $input['mobile'] = $number;
+        $input['verification_token'] = $input_token;
+        $input['verification_code'] = $input_code;
+        $errors = $this->submitFormElement($element, $input, $value);
+
+        $validated = ($token == $input_token) && ($code == $input_code);
+
+        $valid_text = $validated ? 'verified' : 'not verified';
+        $this->assertTrue($validated == !$errors, "$t, $c, is $valid_text.", 'Number Verification');
+      }
+    }
+
+    $element['#default_value'] = array(
+      'value' => $value,
+      'verified' => 1,
+    );
+    $input['country-code'] = $country;
+    $input['mobile'] = $number;
+    $errors = $this->submitFormElement($element, $input, $value);
+    $this->assertTrue(!$errors, "Already verified number is verified.", 'Number Verification');
+
+    $element['#default_value']['verified'] = 0;
+    $errors = $this->submitFormElement($element, $input, $value);
+    $this->assertTrue(!$errors, "Not yet verified number is not verified.", 'Number Verification');
+  }
+
+  /**
+   * Test tfa option.
+   */
+  public function testTfa() {
+    $number = '0541234567';
+    $country = 'IL';
+    $value = '+972541234567';
+    $code = MobileNumber::generateVerificationCode();
+    $token = MobileNumber::registerVerificationCode($code, $value);
+
+    $element = array(
+      '#type' => 'mobile_number',
+      '#title' => 'M',
+      '#mobile_number' => array('tfa' => TRUE),
+    );
+
+    $input['tfa'] = 1;
+    $input['country-code'] = $country;
+    $input['mobile'] = $number;
+
+    $element['#default_value']['verified'] = 0;
+    $errors = $this->submitFormElement($element, $input, $value);
+    $this->assertTrue($errors, "Two factor authentication enabling failure.", 'TFA enabling');
+
+    $input['verification_token'] = $token;
+    $input['verification_code'] = $code;
+    $errors = $this->submitFormElement($element, $input, $value);
+    $this->assertTrue(!$errors, "Two factor authentication enabled successfully.", 'TFA enabling');
+  }
+
+  /**
+   * Submit custom form.
+   */
+  public function submitFormElement($element, $input, $unset_verified_number = NULL) {
+    if ($unset_verified_number) {
+      flood_clear_event('mobile_number_verification', $unset_verified_number);
+      unset($_SESSION['mobile_number_verification'][$unset_verified_number]['verified']);
+    }
+    $form_id = $this->randomName();
+    $form = array();
+    $form_state = form_state_defaults();
+    form_clear_error();
+    $form['op'] = array('#type' => 'submit', '#value' => t('Submit'));
+    $form['mobile_number'] = $element;
+    $form_state['input']['mobile_number'] = $input;
+    $form_state['input']['form_id'] = $form_id;
+    $form_state['method'] = 'post';
+
+    // The form token CSRF protection should not interfere with this test,
+    // so we bypass it by marking this test form as programmed.
+    $form_state['programmed'] = TRUE;
+    drupal_prepare_form($form_id, $form, $form_state);
+    drupal_process_form($form_id, $form, $form_state);
+    return form_get_errors();
+  }
+
+}
