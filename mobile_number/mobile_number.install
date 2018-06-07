@@ -1,0 +1,127 @@
+<?php
+
+/**
+ * @file
+ * Install, update and uninstall functions for the systementity_configfield module.
+ */
+
+/**
+ * Implements hook_field_schema().
+ */
+function mobile_number_field_schema($field) {
+
+  $schema['columns'] = array(
+    'value' => array(
+      'type' => 'varchar',
+      'length' => 19,
+      'not null' => TRUE,
+      'default' => '',
+    ),
+    'country' => array(
+      'type' => 'varchar',
+      'length' => 3,
+      'not null' => TRUE,
+      'default' => '',
+    ),
+    'local_number' => array(
+      'type' => 'varchar',
+      'length' => 15,
+      'not null' => TRUE,
+      'default' => '',
+    ),
+    'verified' => array(
+      'type' => 'int',
+      'not null' => TRUE,
+      'default' => 0,
+    ),
+    'tfa' => array(
+      'type' => 'int',
+      'not null' => TRUE,
+      'default' => 0,
+    ),
+  );
+
+  $schema['indexes'] = array(
+    'value' => array('value'),
+  );
+
+  return $schema;
+}
+
+/**
+ * Implements hook_schema().
+ */
+function mobile_number_schema() {
+
+  $schema['mobile_number_verification'] = array(
+    'description' => 'A table for storing verification codes for mobile numbers.',
+    'fields' => array(
+      'token' => array(
+        'description' => 'Verification token.',
+        'type' => 'varchar',
+        'length' => 43,
+        'not null' => TRUE,
+      ),
+      'timestamp' => array(
+        'description' => 'The time when the verification token was created.',
+        'type' => 'int',
+        'unsigned' => TRUE,
+        'not null' => TRUE,
+        'default' => 0,
+      ),
+      'verification_code' => array(
+        'description' => 'Hash of the code sent to the user.',
+        'type' => 'varchar',
+        'length' => 40,
+        'not null' => TRUE,
+      ),
+    ),
+    'indexes' => array(
+      'token_created' => array('timestamp'),
+    ),
+    'primary key' => array('token'),
+  );
+
+  return $schema;
+
+}
+
+/**
+ * Implements hook_install().
+ */
+function mobile_number_install() {
+  variable_set('mobile_number_secret', drupal_get_token('mobile number secret' . rand(0, 999999999)));
+}
+
+/**
+ * Implements hook_uninstall().
+ */
+function mobile_number_uninstall() {
+  variable_del('mobile_number_secret');
+  variable_del('mobile_number_tfa_field');
+}
+
+/**
+ * Implements hook_requirements().
+ */
+function mobile_number_requirements($phase) {
+  $requirements = array();
+  module_load_include('inc', 'mobile_number', 'include/mobile_number.libphonenumber');
+  switch ($phase) {
+    case 'runtime':
+      $requirements['mobile_number'] = array(
+        'title' => t('Mobile Number Requirements'),
+        'description' => t('!libphonenumber library installation.', array(
+          '!libphonenumber' => l(
+            t('libphonenumber'), 'https://github.com/giggsey/libphonenumber-for-php',
+            array('attributes' => array('target' => '_blank'))
+          ),
+        )),
+        'severity' => class_exists('\libphonenumber\PhoneNumberUtil') ? REQUIREMENT_OK : REQUIREMENT_ERROR,
+        'value' => class_exists('\libphonenumber\PhoneNumberUtil') ? t('Installed.') : t('Not installed.'),
+      );
+      break;
+  }
+
+  return $requirements;
+}

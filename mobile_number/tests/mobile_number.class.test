@@ -1,0 +1,128 @@
+<?php
+
+/**
+ * @file
+ * Test cases file.
+ */
+
+include DRUPAL_ROOT . '/vendor/autoload.php';
+
+/**
+ * Class for testing mobile_number class.
+ */
+class MobileNumberClassTestCase extends DrupalWebTestCase {
+
+  public $user;
+
+  /**
+   * Info.
+   */
+  public static function getInfo() {
+    return array(
+      'name' => 'Mobile number class',
+      'description' => 'Mobile number class functionality.',
+      'group' => 'Mobile Number',
+    );
+  }
+
+  /**
+   * Setup.
+   */
+  public function setUp() {
+    parent::setUp(array(
+      'mobile_number',
+      'sms',
+    ));
+  }
+
+  /**
+   * Test number validation.
+   */
+  public function testNumberValidity() {
+
+    $local_numbers = array(
+      '+972541234568' => 'International IL',
+      '091234567' => 'None mobile IL',
+      '0541234567' => 'Valid IL',
+      '111' => 'Invalid IL',
+      NULL => 'Empty',
+    );
+
+    $countries = array(
+      'IL' => 'IL',
+      'US' => 'US',
+      NULL => 'Empty',
+    );
+
+    foreach ($countries as $country => $country_text) {
+      foreach ($local_numbers as $number => $number_text) {
+        $valid = TRUE;
+        try {
+          new MobileNumber($number, $country);
+        }
+        catch (\Exception $e) {
+          $valid = FALSE;
+        }
+
+        $supposed_valid = FALSE;
+        switch ($country) {
+          case 'IL':
+            $supposed_valid = $number == '+972541234568' || $number == '0541234567';
+            break;
+
+          case NULL:
+            $supposed_valid = $number == '+972541234568';
+            break;
+        }
+
+        $success_text = $supposed_valid ? 'valid' : 'invalid';
+
+        $this->assertTrue($valid == $supposed_valid, "$country_text country, $number_text number, is $success_text.", 'Number Validity');
+      }
+    }
+
+  }
+
+  /**
+   * Test functions.
+   */
+  public function testFunctions() {
+    $int = '+972541234567';
+    $mobile_number = new MobileNumber($int);
+
+    $this->assertTrue(MobileNumber::getCountryCode('IL') == 972, "getCountryCode()", 'Functions');
+    $this->assertTrue(count(MobileNumber::getCountryOptions()), "getCountryOptions()", 'Functions');
+    $this->assertTrue(count(MobileNumber::getCountryOptions(array('IL' => 'IL'))) == 1, "getCountryOptions() filtered", 'Functions');
+    $this->assertTrue(MobileNumber::getCountryName('IL') == 'Israel', "getCountryName()", 'Functions');
+
+    $code = MobileNumber::generateVerificationCode(6);
+    $this->assertTrue(strlen($code) == 6, "generateVerificationCode()", 'Functions');
+
+    $token = MobileNumber::registerVerificationCode($code, $int);
+    $this->assertTrue(strlen($token) == 43, "registerVerificationCode()", 'Functions');
+
+    $this->assertTrue($mobile_number->checkFlood(), "checkFlood() success", 'Functions');
+
+    $token2 = $mobile_number->sendVerification('test', $code);
+    $this->assertTrue(strlen($token2) == 43 && $token2 != $token, "sendVerification()", 'Functions');
+
+    $this->assertTrue($mobile_number->getToken() == $token2, "getToken()", 'Functions');
+
+    $this->assertFalse($mobile_number->verifyCode('000', $token), "verifyCode() failure", 'Functions');
+
+    for ($i = 0; $i < MobileNumber::VERIFY_TOO_MANY_ATTEMPTS; $i++) {
+      $mobile_number->verifyCode('000', $token);
+    }
+
+    $this->assertFalse($mobile_number->checkFlood(), "checkFlood() failure", 'Functions');
+    flood_clear_event('mobile_number_verification', $int);
+
+    $this->assertFalse($mobile_number->isVerified(), "isVerified() failure", 'Functions');
+    $this->assertTrue($mobile_number->verifyCode($code, $token), "verifyCode() success", 'Functions');
+    $this->assertTrue($mobile_number->isVerified(), "isVerified() success", 'Functions');
+
+    $this->assertTrue(strlen(MobileNumber::codeHash($token, $code, $int)) == 40, "codeHash()", 'Functions');
+
+  }
+
+}
