@@ -1,0 +1,74 @@
+<?php
+
+/**
+ * @file
+ * Written by Henri MEDOT <henri.medot[AT]absyx[DOT]fr>
+ * http://www.absyx.fr
+ */
+
+/**
+ * Implements hook_ckeditor_plugin().
+ */
+function ckeditor_video_ckeditor_plugin() {
+  return array('video' => array(
+    'name' => 'video',
+    'desc' => t('Plugin to insert HTML5 video'),
+    'path' => drupal_get_path('module', 'ckeditor_video') . '/video/',
+    'default' => 't',
+    'buttons' => array(
+      'Video' => array(
+        'icon' => 'icons/video.png',
+        'label' => t('Video'),
+      ),
+    ),
+  ));
+}
+
+/**
+ * Implements hook_form_FORM_ID_alter() for ckeditor_admin_profile_form().
+ */
+function ckeditor_video_form_ckeditor_admin_profile_form_alter(&$form, &$form_state) {
+  $form['ckeditor_upload_settings']['filebrowser_video'] = array(
+    '#type' => 'select',
+    '#title' => t('File browser type (Video dialog window)'),
+    '#default_value' => !empty($profile->settings['filebrowser_video']) ? $profile->settings['filebrowser_video'] : 'none',
+    '#options' => $form['ckeditor_upload_settings']['filebrowser_image']['#options'],
+    '#description' => t('Select the file browser that you would like to use to upload videos.'),
+  );
+  if (isset($form['ckeditor_upload_settings']['UserFilesPath'])) {
+    $form['ckeditor_upload_settings']['UserFilesPath']['#weight'] = 10;
+  }
+  if (isset($form['ckeditor_upload_settings']['UserFilesAbsolutePath'])) {
+    $form['ckeditor_upload_settings']['UserFilesAbsolutePath']['#weight'] = 20;
+  }
+}
+
+/**
+ * Implements ckeditor_settings_alter().
+ */
+function ckeditor_video_ckeditor_settings_alter(&$settings, $conf) {
+  if (!isset($settings['filebrowserVideoBrowseUrl'])) {
+    $filebrowser = !empty($conf['filebrowser_video']) ? $conf['filebrowser_video'] : $conf['filebrowser'];
+    switch ($filebrowser) {
+      case 'imce':
+        if (module_exists('imce')) {
+          $settings['filebrowserVideoBrowseUrl'] = url('imce', array('query' => array('app' => 'ckeditor|sendto@ckeditor_imceSendTo|')));
+        }
+        break;
+      // @todo Add support for other file browsers.
+    }
+  }
+}
+
+/**
+ * Implements hook_wysiwyg_plugin().
+ */
+function ckeditor_video_wysiwyg_plugin($editor, $version) {
+  if ($editor == 'ckeditor') {
+    return array('video' => array(
+      'path' => drupal_get_path('module', 'ckeditor_video') . '/video',
+      'load' => TRUE,
+      'buttons' => array('Video' => t('Video')),
+    ));
+  }
+}
