@@ -1,0 +1,12 @@
+diff --git a/css/chosen-drupal.css b/css/chosen-drupal.css
+index 89444d1..26e264b 100644
+--- a/css/chosen-drupal.css
++++ b/css/chosen-drupal.css
+@@ -18,6 +18,7 @@
+
+ .chosen-container {
+   display: inline-block !important;
++  min-width: 300px !important;
+ }
+ .container-inline div.chosen-container div {
+   display: block;
