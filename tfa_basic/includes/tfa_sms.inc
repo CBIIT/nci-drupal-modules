@@ -8,14 +8,13 @@ class TfaBasicSms extends TfaBasePlugin implements TfaValidationPluginInterface,
 
   protected $mobileNumber;
 
-  public function __construct(array $context, $mobile_number) {
+  public function __construct(array $context, $mobile_number, $twilio_client) {
     parent::__construct($context);
     if (!empty($context['validate_context']) && !empty($context['validate_context']['code'])) {
       $this->code = $context['validate_context']['code'];
     }
-    $sid = variable_get('tfa_basic_twilio_account_sid', '');
-    $token = variable_get('tfa_basic_twilio_account_token', '');
-    $this->client = new Services_Twilio($sid, $token);
+
+    $this->client = $twilio_client;
     $this->twilioNumber = variable_get('tfa_basic_twilio_account_number', '');
     $this->codeLength = 6;
     $this->messageText = variable_get('tfa_basic_twilio_message_text',
@@ -46,6 +45,9 @@ class TfaBasicSms extends TfaBasePlugin implements TfaValidationPluginInterface,
       '#required' => TRUE,
       '#description' => t('Enter @length-character code sent to your device.', array('@length' => $this->codeLength)),
     );
+    if (module_exists('elements')) {
+      $form['code']['#type'] = 'numberfield';
+    }
     $form['actions']['#type'] = 'actions';
     // @todo optionally report on when code was sent/delivered.
     $form['actions']['login'] = array(
@@ -105,11 +107,24 @@ class TfaBasicSms extends TfaBasePlugin implements TfaValidationPluginInterface,
   }
 
   protected function generate() {
-    $characters = '0123456789';
+    $allowable_characters = '0123456789';
+
+    // Zero-based count of characters in the allowable list:
+    $len = strlen($allowable_characters) - 1;
+
+    // Declare the password as a blank string.
     $string = '';
-    $max = strlen($characters) - 1;
-    for ($p = 0; $p < $this->codeLength; $p++) {
-      $string .= $characters[mt_rand(0, $max)];
+
+    // Loop the number of times specified by codeLength.
+    for ($i = 0; $i < $this->codeLength; $i++) {
+      do {
+        // Find a secure random number within the range needed.
+        $index = ord(drupal_random_bytes(1));
+      } while ($index > $len);
+
+      // Each iteration, pick a random character from the
+      // allowable string and append it to the password:
+      $string .= $allowable_characters[$index];
     }
     return $string;
   }
@@ -137,11 +152,10 @@ class TfaBasicSms extends TfaBasePlugin implements TfaValidationPluginInterface,
       return TRUE;
     }
     catch (Services_Twilio_RestException $e) {
-      // @todo Consider more detailed reporting by mapping Twilio error codes to
-      // messages.
-      watchdog('tfa_basic', 'Twilio send message error to user !uid @code @link', array(
+      watchdog('tfa_basic', 'Twilio send message error to user !uid. Status code: @code, message: @message, link: @link', array(
         '!uid' => $this->context['uid'],
         '@code' => $e->getStatus(),
+        '@message' => $e->getMessage(),
         '@link' => $e->getInfo(),
         ), WATCHDOG_ERROR);
       return FALSE;
@@ -154,8 +168,8 @@ class TfaBasicSms extends TfaBasePlugin implements TfaValidationPluginInterface,
  */
 class TfaBasicSmsSetup extends TfaBasicSms implements TfaSetupPluginInterface {
 
-  public function __construct(array $context, $mobile_number) {
-    parent::__construct($context, $mobile_number);
+  public function __construct(array $context, $mobile_number, $client) {
+    parent::__construct($context, $mobile_number, $client);
   }
 
   public function begin() {
@@ -178,6 +192,9 @@ class TfaBasicSmsSetup extends TfaBasicSms implements TfaSetupPluginInterface {
       '#required' => TRUE,
       '#description' => t('Enter @length-character code sent to your device.', array('@length' => $this->codeLength)),
     );
+    if (module_exists('elements')) {
+      $form['sms_code']['#type'] = 'numberfield';
+    }
     $form['actions']['verify'] = array(
       '#type' => 'submit',
       '#value' => t('Verify and save'),

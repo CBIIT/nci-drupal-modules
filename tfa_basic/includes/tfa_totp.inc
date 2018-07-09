@@ -55,6 +55,9 @@ class TfaTotp extends TfaBasePlugin implements TfaValidationPluginInterface {
       '#required' => TRUE,
       '#attributes' => array('autocomplete' => 'off'),
     );
+    if (module_exists('elements')) {
+      $form['code']['#type'] = 'numberfield';
+    }
     $form['actions']['#type'] = 'actions';
     $form['actions']['login'] = array(
       '#type' => 'submit',
@@ -195,10 +198,10 @@ class TfaTotpSetup extends TfaTotp implements TfaSetupPluginInterface {
   public function getSetupForm(array $form, array &$form_state) {
     $items = array(
       l('Google Authenticator (Android/iPhone/BlackBerry)', 'https://support.google.com/accounts/answer/1066447?hl=en', array('attributes' => array('target'=>'_blank'))),
-      l('Authy (Android/iPhone)', 'https://www.authy.com/thefuture#install-now', array('attributes' => array('target'=>'_blank'))),
+      l('Authy (Android/iPhone)', 'https://www.authy.com/app/', array('attributes' => array('target'=>'_blank'))),
       l('Authenticator (Windows Phone)', 'http://www.windowsphone.com/en-us/store/app/authenticator/021dd79f-0598-e011-986b-78e7d1fa76f8', array('attributes' => array('target'=>'_blank'))),
       l('FreeOTP (Android)', 'https://play.google.com/store/apps/details?id=org.fedorahosted.freeotp', array('attributes' => array('target'=>'_blank'))),
-      l('GAuth Authenticator (desktop)', 'https://github.com/gbraad/html5-google-authenticator', array('attributes' => array('target'=>'_blank')))
+      l('GAuth Authenticator (Firefox OS, desktop, others)', 'https://github.com/gbraad/gauth', array('attributes' => array('target'=>'_blank')))
     );
     $form['apps'] = array(
       '#type' => 'markup',
@@ -212,6 +215,7 @@ class TfaTotpSetup extends TfaTotp implements TfaSetupPluginInterface {
       '#type' => 'textfield',
       '#value' => $this->seed,
       '#disabled' => TRUE,
+      '#allow_focus' => TRUE,
       '#description' => t('Enter this code into your two-factor authentication app or scan the QR code below.'),
     );
     // QR image of seed.
@@ -289,7 +293,7 @@ class TfaTotpSetup extends TfaTotp implements TfaSetupPluginInterface {
    * @return string Seed.
    */
   protected function createSeed() {
-    return $this->ga->createSecret();
+    return $this->ga->createSecret(24);
   }
 
   /**
