@@ -39,6 +39,9 @@ class TfaBasicRecoveryCode extends TfaBasePlugin implements TfaValidationPluginI
       '#description' => t('Recovery codes were generated when you first set up TFA. Format: XXX XX XXX'),
       '#attributes' => array('autocomplete' => 'off'),
     );
+    if (module_exists('elements')) {
+      $form['recover']['#type'] = 'numberfield';
+    }
     $form['actions']['#type'] = 'actions';
     $form['actions']['login'] = array(
       '#type' => 'submit',
