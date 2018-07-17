@@ -1,0 +1,15 @@
+name = Search API Exclude
+description = Allows users to exclude certain nodes from being indexed.
+core = 7.x
+package = Search
+dependencies[] = search_api
+
+files[] = views/handlers/search_api_exclude_views_handler_filter_status.inc
+
+
+; Information added by Drupal.org packaging script on 2017-11-13
+version = "7.x-1.3"
+core = "7.x"
+project = "search_api_exclude"
+datestamp = "1510582091"
+
