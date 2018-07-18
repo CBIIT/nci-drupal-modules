@@ -720,33 +720,6 @@ function imagefield_crop_widget_preview_process($element, &$form_state, $form) {
   $instance = field_widget_instance($parent, $form_state);
   list($width, $height) = !empty($instance['widget']['settings']['resolution']) ? explode('x', $instance['widget']['settings']['resolution']) : array(0, 0);
 
-  $exif = exif_read_data(drupal_realpath($file->uri));
-  $degrees = 0;
-  if (isset($exif['Orientation'])) {
-    switch ($exif['Orientation']) {
-      case 3:
-        $degrees = 180;
-        break;
-      case 6:
-        $degrees = 90;
-        break;
-      case 8:
-        $degrees = 270;
-        break;
-    }
-  }
-  if ($degrees > 0) {
-    $realpath = drupal_realpath($file->uri);
-    $image = image_load($realpath);
-    image_rotate($image, $degrees);
-    $success = image_save($image, $file->uri);
-    if ($success) {
-      $file->uri = file_unmanaged_copy($file->uri, $file->uri);
-      file_save($file);
-      file_unmanaged_delete($realpath);
-    }    
-  }
-
   $image_info = image_get_info(drupal_realpath($file->uri));
   $settings = array(
     $parent['#id'] => array(
