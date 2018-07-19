@@ -1,0 +1,13 @@
+diff --git a/mobile_number/mobile_number.module b/mobile_number/mobile_number.module
+index 1350d55..3d4c9a8 100755
+--- a/mobile_number/mobile_number.module
++++ b/mobile_number/mobile_number.module
+@@ -933,7 +933,7 @@ function mobile_number_element_validate($element, &$form_state) {
+ 
+         case MobileNumber::ERROR_INVALID_NUMBER:
+         case MobileNumber::ERROR_WRONG_TYPE:
+-          $errors[$field_path . '][mobile'] = t('The phone number %value provided for %field is not a valid mobile number for country %country.', array(
++          $errors[$field_path . '][mobile'] = t('The phone number %value provided for %field is not a valid phone number for country %country.', array(
+             '%value' => $input['mobile'],
+             '%field' => $field_label,
+             '%country' => !empty($countries[$input['country-code']]) ? $countries[$input['country-code']] : '',
