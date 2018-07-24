@@ -1,0 +1,12 @@
+$id;
+name = Taxonomy Multi-delete Terms
+description = This module help to delete multiple terms at one time.
+dependencies[] = taxonomy
+core = 7.x
+
+; Information added by Drupal.org packaging script on 2017-02-03
+version = "7.x-1.3"
+core = "7.x"
+project = "taxonomy_multidelete_terms"
+datestamp = "1486108985"
+
